@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
 
@@ -90,6 +90,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [pageInput, setPageInput] = useState("1");
 
   const filtered = useMemo(() => {
     const q = appliedFilters.query.trim().toLowerCase();
@@ -156,6 +157,10 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   const start = (safePage - 1) * pageSize;
   const currentRows = filtered.slice(start, start + pageSize);
 
+  useEffect(() => {
+    setPageInput(String(safePage));
+  }, [safePage]);
+
   function toggleSort(nextField: SortField) {
     if (sortField === nextField) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -173,6 +178,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   function applySelection() {
     setAppliedFilters(draftFilters);
     setPage(1);
+    setPageInput("1");
   }
 
   function clearSelection() {
@@ -182,6 +188,17 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     setSortDirection("asc");
     setPageSize(25);
     setPage(1);
+    setPageInput("1");
+  }
+
+  function jumpToPage() {
+    const parsed = Number(pageInput);
+    if (!Number.isFinite(parsed)) {
+      return;
+    }
+    const nextPage = Math.max(1, Math.min(totalPages, Math.trunc(parsed)));
+    setPage(nextPage);
+    setPageInput(String(nextPage));
   }
 
   return (
@@ -407,17 +424,39 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           <button
             className="secondary"
             disabled={safePage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => {
+              const nextPage = Math.max(1, safePage - 1);
+              setPage(nextPage);
+              setPageInput(String(nextPage));
+            }}
           >
             Previous
           </button>
-          <span>
-            Page {safePage} / {totalPages}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>
+              Page {safePage} / {totalPages}
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageInput}
+              onChange={(event) => setPageInput(event.target.value)}
+              style={{ width: "88px" }}
+              aria-label="Jump to page number"
+            />
+            <button type="button" className="secondary" onClick={jumpToPage}>
+              Go
+            </button>
+          </div>
           <button
             className="secondary"
             disabled={safePage >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => {
+              const nextPage = Math.min(totalPages, safePage + 1);
+              setPage(nextPage);
+              setPageInput(String(nextPage));
+            }}
           >
             Next
           </button>
