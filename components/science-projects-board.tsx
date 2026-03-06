@@ -36,12 +36,6 @@ type ProjectUpdate = {
   href: string;
 };
 
-type PageTextBlock = {
-  id: string;
-  title: string;
-  body: string;
-};
-
 type PageContent = {
   heroTitle: string;
   heroIntro: string;
@@ -55,14 +49,20 @@ type PersistedState = {
   content: PageContent;
 };
 
+type ScienceProjectsApiResponse = PersistedState & {
+  message?: string;
+  isAdmin?: boolean;
+  adminConfigured?: boolean;
+  error?: string;
+};
+
 const STORAGE_KEY = "emerald-science-projects-v4";
 const MEMBER_LIST_ID = "coi-member-options";
-const ADMIN_PASSWORD = "westlakebiggestsun";
 
 const DEFAULT_CONTENT: PageContent = {
   heroTitle: "Science Projects",
   heroIntro:
-    "Browse announced EMERALD science projects, join by selecting your Co-I name, and submit new projects with title, abstract, and contact details.",
+    "Browse announced EMERALD+DIVER science projects, join by selecting your Co-I name, and submit new projects with title, abstract, and contact details.",
   announcedHeading: "Announced Projects",
   submitHeading: "Submit a New Project",
   submittedHeading: "Submitted Projects (Pending Approval)"
@@ -73,7 +73,7 @@ const ANNOUNCED_PROJECTS: ScienceProject[] = [
     id: "agn-incidence-z4-9",
     title: "AGN Incidence Across z = 4-9",
     abstract:
-      "Measure AGN incidence in the EMERALD galaxy sample using rest-optical diagnostics and broad-line indicators.",
+      "Measure AGN incidence in the EMERALD+DIVER galaxy sample using rest-optical diagnostics and broad-line indicators.",
     announced: true,
     submitter: null,
     joiners: []
@@ -151,30 +151,10 @@ function dedupePeople(people: ProjectPerson[]): ProjectPerson[] {
   return output;
 }
 
-function mergeWithAnnounced(savedProjects: ScienceProject[]): ScienceProject[] {
-  const announcedById = new Map(ANNOUNCED_PROJECTS.map((project) => [project.id, project]));
-  const cleanedSaved = savedProjects.map((project) => ({
-    ...project,
-    submitter: project.submitter ? sanitizePerson(project.submitter) : null,
-    joiners: dedupePeople(project.joiners)
-  }));
-
-  const mergedAnnounced = ANNOUNCED_PROJECTS.map((project) => {
-    const persisted = cleanedSaved.find((candidate) => candidate.id === project.id);
-    if (!persisted) return project;
-
-    return {
-      ...project,
-      submitter: persisted.submitter,
-      joiners: dedupePeople([...project.joiners, ...persisted.joiners])
-    };
-  });
-
-  const customProjects = cleanedSaved.filter((project) => !announcedById.has(project.id));
-  return [...mergedAnnounced, ...customProjects];
-}
-
-function parseSavedPerson(value: unknown, memberByName: Map<string, CoiOption>): ProjectPerson | null {
+function parseSavedPerson(
+  value: unknown,
+  memberByName: Map<string, CoiOption>
+): ProjectPerson | null {
   if (!value) return null;
 
   if (typeof value === "string") {
@@ -194,12 +174,16 @@ function parseSavedPerson(value: unknown, memberByName: Map<string, CoiOption>):
   if (!email) return null;
 
   const updateLink = typeof raw.updateLink === "string" ? raw.updateLink : "";
-  const updateDate = typeof raw.updateDate === "string" ? raw.updateDate : updateLink ? nowIsoDate() : "";
+  const updateDate =
+    typeof raw.updateDate === "string" ? raw.updateDate : updateLink ? nowIsoDate() : "";
 
   return sanitizePerson({ name, email, updateLink, updateDate });
 }
 
-function parseSavedProject(value: unknown, memberByName: Map<string, CoiOption>): ScienceProject | null {
+function parseSavedProject(
+  value: unknown,
+  memberByName: Map<string, CoiOption>
+): ScienceProject | null {
   if (!value || typeof value !== "object") return null;
 
   const candidate = value as Record<string, unknown>;
@@ -234,12 +218,22 @@ function parseSavedContent(value: unknown): PageContent {
   const raw = value as Record<string, unknown>;
 
   return {
-    heroTitle: typeof raw.heroTitle === "string" ? raw.heroTitle : DEFAULT_CONTENT.heroTitle,
-    heroIntro: typeof raw.heroIntro === "string" ? raw.heroIntro : DEFAULT_CONTENT.heroIntro,
-    announcedHeading: typeof raw.announcedHeading === "string" ? raw.announcedHeading : DEFAULT_CONTENT.announcedHeading,
-    submitHeading: typeof raw.submitHeading === "string" ? raw.submitHeading : DEFAULT_CONTENT.submitHeading,
+    heroTitle:
+      typeof raw.heroTitle === "string" ? raw.heroTitle : DEFAULT_CONTENT.heroTitle,
+    heroIntro:
+      typeof raw.heroIntro === "string" ? raw.heroIntro : DEFAULT_CONTENT.heroIntro,
+    announcedHeading:
+      typeof raw.announcedHeading === "string"
+        ? raw.announcedHeading
+        : DEFAULT_CONTENT.announcedHeading,
+    submitHeading:
+      typeof raw.submitHeading === "string"
+        ? raw.submitHeading
+        : DEFAULT_CONTENT.submitHeading,
     submittedHeading:
-      typeof raw.submittedHeading === "string" ? raw.submittedHeading : DEFAULT_CONTENT.submittedHeading
+      typeof raw.submittedHeading === "string"
+        ? raw.submittedHeading
+        : DEFAULT_CONTENT.submittedHeading
   };
 }
 
@@ -265,7 +259,7 @@ function projectMailtoHref(project: ScienceProject): string | null {
   const emails = uniqueEmails(project);
   if (emails.length === 0) return null;
 
-  const subject = encodeURIComponent(`[EMERALD] ${project.title}`);
+  const subject = encodeURIComponent(`[EMERALD+DIVER] ${project.title}`);
   return `mailto:${emails.join(",")}?subject=${subject}`;
 }
 
@@ -326,6 +320,8 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
   const [submitAbstract, setSubmitAbstract] = useState("");
 
   const [adminMode, setAdminMode] = useState(false);
+  const [adminConfigured, setAdminConfigured] = useState(false);
+  const [adminAuthorized, setAdminAuthorized] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
   const [adminProjectTitle, setAdminProjectTitle] = useState("");
@@ -333,7 +329,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
   const [adminProjectAnnounced, setAdminProjectAnnounced] = useState(true);
 
   const [message, setMessage] = useState("");
-  const [storageReady, setStorageReady] = useState(false);
+  const [stateReady, setStateReady] = useState(false);
 
   const announcedProjects = useMemo(
     () => projects.filter((project) => project.announced),
@@ -350,55 +346,111 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
   }, [submitName, memberByName]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    let mounted = true;
 
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        setStorageReady(true);
-        return;
+    async function loadInitialState() {
+      let loadedProjects: ScienceProject[] | null = null;
+      let loadedContent: PageContent | null = null;
+
+      try {
+        const response = await fetch("/api/science-projects", {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        if (response.ok) {
+          const parsed = (await response.json()) as ScienceProjectsApiResponse;
+          const rawProjects = Array.isArray(parsed.projects) ? parsed.projects : [];
+          loadedProjects = rawProjects
+            .map((item) => parseSavedProject(item, memberByName))
+            .filter((item): item is ScienceProject => item !== null);
+          loadedContent = parseSavedContent(parsed.content);
+          setAdminAuthorized(Boolean(parsed.isAdmin));
+          setAdminConfigured(Boolean(parsed.adminConfigured));
+          setAdminMode(Boolean(parsed.isAdmin));
+        }
+      } catch {
+        // Continue with local fallback/defaults below.
       }
 
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        const cleanedProjects = parsed
-          .map((item) => parseSavedProject(item, memberByName))
-          .filter((item): item is ScienceProject => item !== null);
-        setProjects(mergeWithAnnounced(cleanedProjects));
-        setContent(DEFAULT_CONTENT);
-      } else if (parsed && typeof parsed === "object") {
-        const record = parsed as Record<string, unknown>;
-        const rawProjects = Array.isArray(record.projects) ? record.projects : [];
-        const cleanedProjects = rawProjects
-          .map((item) => parseSavedProject(item, memberByName))
-          .filter((item): item is ScienceProject => item !== null);
-
-        setProjects(mergeWithAnnounced(cleanedProjects));
-        setContent(parseSavedContent(record.content));
+      if (loadedProjects === null && typeof window !== "undefined") {
+        try {
+          const raw = window.localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              loadedProjects = parsed
+                .map((item) => parseSavedProject(item, memberByName))
+                .filter((item): item is ScienceProject => item !== null);
+              loadedContent = DEFAULT_CONTENT;
+            } else if (parsed && typeof parsed === "object") {
+              const record = parsed as Record<string, unknown>;
+              const rawProjects = Array.isArray(record.projects)
+                ? record.projects
+                : [];
+              loadedProjects = rawProjects
+                .map((item) => parseSavedProject(item, memberByName))
+                .filter((item): item is ScienceProject => item !== null);
+              loadedContent = parseSavedContent(record.content);
+            }
+          }
+        } catch {
+          // Ignore malformed local data and continue with defaults.
+        }
       }
-    } catch {
-      // Ignore malformed local data and continue with defaults.
-    } finally {
-      setStorageReady(true);
+
+      if (!mounted) return;
+      if (loadedProjects !== null) {
+        setProjects(loadedProjects);
+      }
+      if (loadedContent) {
+        setContent(loadedContent);
+      }
+      setStateReady(true);
     }
+
+    void loadInitialState();
+    return () => {
+      mounted = false;
+    };
   }, [memberByName]);
 
   useEffect(() => {
-    if (!storageReady || typeof window === "undefined") return;
+    if (!stateReady) return;
 
-    const payload: PersistedState = {
-      projects,
-      content
+    const payload: PersistedState = { projects, content };
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    if (!adminMode || !adminAuthorized) return;
+
+    const timeout = window.setTimeout(() => {
+      void fetch("/api/science-projects", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+        .then(async (response) => {
+          if (response.status === 403) {
+            setAdminMode(false);
+            setAdminAuthorized(false);
+            setMessage("Admin session expired. Please re-enter administration mode.");
+          }
+        })
+        .catch(() => {
+          setMessage("Failed to save admin changes to server.");
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeout);
     };
+  }, [projects, content, stateReady, adminMode, adminAuthorized]);
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [projects, content, storageReady]);
-
-  function handleJoin(event: FormEvent<HTMLFormElement>, projectId: string) {
+  async function handleJoin(event: FormEvent<HTMLFormElement>, projectId: string) {
     event.preventDefault();
-
-    const project = projects.find((item) => item.id === projectId);
-    if (!project) return;
 
     const draft = joinDrafts[projectId] ?? { name: "", updateLink: "" };
     const selectedName = normalizeName(draft.name);
@@ -415,55 +467,44 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
       return;
     }
 
-    const existing = project.joiners.find((joiner) => joiner.email === member.email);
+    try {
+      const response = await fetch("/api/science-projects/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          name: member.name,
+          updateLink: selectedLink
+        })
+      });
 
-    if (existing) {
-      if (!selectedLink || existing.updateLink === selectedLink) {
-        setMessage(`${member.name} is already joined for this project.`);
+      const parsed = (await response.json().catch(() => null)) as
+        | ScienceProjectsApiResponse
+        | null;
+
+      if (!response.ok) {
+        setMessage(parsed?.error ?? "Failed to join project.");
         return;
       }
 
-      setProjects((prev) =>
-        prev.map((item) => {
-          if (item.id !== projectId) return item;
-          return {
-            ...item,
-            joiners: item.joiners.map((joiner) =>
-              joiner.email === member.email
-                ? { ...joiner, updateLink: selectedLink, updateDate: nowIsoDate() }
-                : joiner
-            )
-          };
-        })
-      );
-      setMessage(`Updated recent link for ${member.name}.`);
-      return;
+      if (Array.isArray(parsed?.projects)) {
+        const cleanedProjects = parsed.projects
+          .map((item) => parseSavedProject(item, memberByName))
+          .filter((item): item is ScienceProject => item !== null);
+        setProjects(cleanedProjects);
+      }
+      if (parsed?.content) {
+        setContent(parseSavedContent(parsed.content));
+      }
+
+      setJoinDrafts((prev) => ({ ...prev, [projectId]: { name: "", updateLink: "" } }));
+      setMessage(parsed?.message ?? `${member.name} joined.`);
+    } catch {
+      setMessage("Network error while joining project.");
     }
-
-    setProjects((prev) =>
-      prev.map((item) =>
-        item.id === projectId
-          ? {
-              ...item,
-              joiners: [
-                ...item.joiners,
-                {
-                  name: member.name,
-                  email: member.email,
-                  updateLink: selectedLink,
-                  updateDate: selectedLink ? nowIsoDate() : ""
-                }
-              ]
-            }
-          : item
-      )
-    );
-
-    setJoinDrafts((prev) => ({ ...prev, [projectId]: { name: "", updateLink: "" } }));
-    setMessage(`${member.name} joined \"${project.title}\".`);
   }
 
-  function handleSubmitProject(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmitProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const safeTitle = submitTitle.trim();
@@ -488,44 +529,87 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
       return;
     }
 
-    const newProject: ScienceProject = {
-      id: createId("submitted"),
-      title: safeTitle,
-      abstract: safeAbstract,
-      announced: false,
-      submitter: {
-        name: member.name,
-        email: member.email,
-        updateLink: safeUpdateLink,
-        updateDate: safeUpdateLink ? nowIsoDate() : ""
-      },
-      joiners: []
-    };
+    try {
+      const response = await fetch("/api/science-projects/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: safeTitle,
+          abstract: safeAbstract,
+          name: member.name,
+          updateLink: safeUpdateLink
+        })
+      });
 
-    setProjects((prev) => [...prev, newProject]);
-    setSubmitName("");
-    setSubmitEmail("");
-    setSubmitUpdateLink("");
-    setSubmitTitle("");
-    setSubmitAbstract("");
-    setMessage(`Submitted \"${safeTitle}\". Pending administrator announcement.`);
+      const parsed = (await response.json().catch(() => null)) as
+        | ScienceProjectsApiResponse
+        | null;
+
+      if (!response.ok) {
+        setMessage(parsed?.error ?? "Failed to submit project.");
+        return;
+      }
+
+      if (Array.isArray(parsed?.projects)) {
+        const cleanedProjects = parsed.projects
+          .map((item) => parseSavedProject(item, memberByName))
+          .filter((item): item is ScienceProject => item !== null);
+        setProjects(cleanedProjects);
+      }
+      if (parsed?.content) {
+        setContent(parseSavedContent(parsed.content));
+      }
+
+      setSubmitName("");
+      setSubmitEmail("");
+      setSubmitUpdateLink("");
+      setSubmitTitle("");
+      setSubmitAbstract("");
+      setMessage(parsed?.message ?? `Submitted "${safeTitle}".`);
+    } catch {
+      setMessage("Network error while submitting project.");
+    }
   }
 
-  function enterAdminMode(event: FormEvent<HTMLFormElement>) {
+  async function enterAdminMode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (adminPassword !== ADMIN_PASSWORD) {
-      setMessage("Incorrect administration password.");
-      return;
-    }
+    try {
+      const response = await fetch("/api/science-projects/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: adminPassword })
+      });
 
-    setAdminMode(true);
-    setAdminPassword("");
-    setMessage("Administration mode enabled.");
+      const parsed = (await response.json().catch(() => null)) as
+        | { error?: string }
+        | null;
+
+      if (!response.ok) {
+        setMessage(parsed?.error ?? "Unable to enter administration mode.");
+        return;
+      }
+
+      setAdminMode(true);
+      setAdminAuthorized(true);
+      setAdminPassword("");
+      setMessage("Administration mode enabled.");
+    } catch {
+      setMessage("Network error while enabling administration mode.");
+    }
   }
 
-  function exitAdminMode() {
+  async function exitAdminMode() {
+    try {
+      await fetch("/api/science-projects/admin/logout", {
+        method: "POST"
+      });
+    } catch {
+      // Best effort logout.
+    }
+
     setAdminMode(false);
+    setAdminAuthorized(false);
     setShowAdminPanel(false);
     setMessage("Administration mode disabled.");
   }
@@ -621,10 +705,13 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
 
     return (
       <article className="card project-card" key={project.id}>
+        <h3>{project.title}</h3>
+        <p>{project.abstract}</p>
+
         {adminMode ? (
           <div className="project-admin-edit">
             <label>
-              Project Title
+              Edit Title
               <input
                 value={project.title}
                 onChange={(event) => {
@@ -636,7 +723,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
               />
             </label>
             <label>
-              Project Abstract
+              Edit Abstract
               <textarea
                 rows={4}
                 value={project.abstract}
@@ -663,12 +750,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <h3>{project.title}</h3>
-            <p>{project.abstract}</p>
-          </>
-        )}
+        ) : null}
 
         {project.submitter ? (
           <p className="muted">
@@ -716,7 +798,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
         )}
 
         {showJoinForm ? (
-          <form className="project-join-form" onSubmit={(event) => handleJoin(event, project.id)}>
+          <form className="project-join-form" onSubmit={(event) => void handleJoin(event, project.id)}>
             <div className="project-join-fields">
               <label>
                 Join Name
@@ -777,7 +859,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
 
       <section className="card">
         <h2>{content.submitHeading}</h2>
-        <form className="grid" onSubmit={handleSubmitProject}>
+        <form className="grid" onSubmit={(event) => void handleSubmitProject(event)}>
           <label>
             Submitter Name
             <input
@@ -832,7 +914,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
       {showAdminPanel ? (
         <section className="card admin-panel">
           {!adminMode ? (
-            <form className="project-admin-form" onSubmit={enterAdminMode}>
+            <form className="project-admin-form" onSubmit={(event) => void enterAdminMode(event)}>
               <label>
                 Administration Password
                 <input
@@ -840,10 +922,16 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
                   value={adminPassword}
                   onChange={(event) => setAdminPassword(event.target.value)}
                   placeholder="Enter password"
+                  disabled={!adminConfigured}
                 />
               </label>
+              {!adminConfigured ? (
+                <p className="notice" style={{ margin: 0 }}>
+                  Admin mode is not configured on the server.
+                </p>
+              ) : null}
               <div>
-                <button type="submit" className="secondary">
+                <button type="submit" className="secondary" disabled={!adminConfigured}>
                   Enter Administration Mode
                 </button>
               </div>
@@ -852,7 +940,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
             <div className="grid" style={{ gap: "0.9rem" }}>
               <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
                 <strong>Administration mode is active.</strong>
-                <button type="button" className="secondary" onClick={exitAdminMode}>
+                <button type="button" className="secondary" onClick={() => void exitAdminMode()}>
                   Exit Administration Mode
                 </button>
               </div>
@@ -909,7 +997,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
           <button
             type="button"
             className="secondary admin-mini-button"
-            onClick={exitAdminMode}
+            onClick={() => void exitAdminMode()}
           >
             Exit Admin Mode
           </button>

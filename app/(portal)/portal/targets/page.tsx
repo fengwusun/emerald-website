@@ -8,8 +8,8 @@ export default function PortalTargetsPage() {
     <div className="grid">
       <h1>Target Catalog</h1>
       <p className="muted">
-        Search and filter EMERALD targets. Click a target to inspect ancillary
-        data products.
+        Search and filter EMERALD+DIVER targets. Click a target to inspect
+        ancillary data products.
       </p>
       <PortalTargetTable targets={targets} />
     </div>

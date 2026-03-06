@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { isPortalPasswordValid, expectedSessionValue, PORTAL_COOKIE_NAME } from "@/lib/auth";
+import {
+  isPortalPasswordValid,
+  isPortalAuthConfigured,
+  expectedSessionValue,
+  PORTAL_COOKIE_NAME
+} from "@/lib/auth";
 import { withBasePath } from "@/lib/base-path";
 import { getPublicOrigin } from "@/lib/request-origin";
 
@@ -10,6 +15,14 @@ export async function POST(request: Request) {
   const nextPath = nextPathRaw.startsWith("/") ? nextPathRaw : withBasePath("/portal/targets");
 
   const origin = getPublicOrigin(new Headers(request.headers), request.url);
+
+  if (!isPortalAuthConfigured()) {
+    const configUrl = new URL(
+      `${withBasePath("/portal/login")}?error=config&next=${encodeURIComponent(nextPath)}`,
+      origin
+    );
+    return NextResponse.redirect(configUrl, { status: 303 });
+  }
 
   if (!password || !isPortalPasswordValid(password)) {
     const errorUrl = new URL(

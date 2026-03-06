@@ -1,0 +1,42 @@
+{
+  "projects": [
+    {
+      "id": "agn-incidence-z4-9",
+      "title": "AGN Incidence Across z = 4-9",
+      "abstract": "Measure AGN incidence in the EMERALD+DIVER galaxy sample using rest-optical diagnostics and broad-line indicators.",
+      "announced": true,
+      "submitter": null,
+      "joiners": [
+        {
+          "name": "Eiichi Egami",
+          "email": "egami@arizona.edu",
+          "updateLink": "",
+          "updateDate": ""
+        }
+      ]
+    },
+    {
+      "id": "line-ratio-evolution",
+      "title": "Emission-Line Ratio Evolution",
+      "abstract": "Track how key emission-line ratios evolve with redshift and connect ionization conditions to host-galaxy properties.",
+      "announced": true,
+      "submitter": null,
+      "joiners": []
+    },
+    {
+      "id": "host-nucleus-connection",
+      "title": "Host Galaxy and Nuclear Activity Connection",
+      "abstract": "Link AGN signatures with stellar mass growth, star-formation activity, and morphology in deep legacy fields.",
+      "announced": true,
+      "submitter": null,
+      "joiners": []
+    }
+  ],
+  "content": {
+    "heroTitle": "Science Projects",
+    "heroIntro": "Browse announced EMERALD+DIVER science projects, join by selecting your Co-I name, and submit new projects with title, abstract, and contact details.",
+    "announcedHeading": "Announced Projects",
+    "submitHeading": "Submit a New Project",
+    "submittedHeading": "Submitted Projects (Pending Approval)"
+  }
+}

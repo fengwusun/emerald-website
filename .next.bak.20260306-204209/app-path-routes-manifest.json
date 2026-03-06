@@ -1,0 +1,18 @@
+{
+  "/api/assets/sign/route": "/api/assets/sign",
+  "/api/portal/login/route": "/api/portal/login",
+  "/api/portal/logout/route": "/api/portal/logout",
+  "/api/targets/image/route": "/api/targets/image",
+  "/_not-found/page": "/_not-found",
+  "/(public)/contact-data-policy/page": "/contact-data-policy",
+  "/(public)/page": "/",
+  "/(public)/science-goals/page": "/science-goals",
+  "/(public)/observing-plan/page": "/observing-plan",
+  "/(public)/science-projects/page": "/science-projects",
+  "/(public)/team/page": "/team",
+  "/(portal)/portal/login/page": "/portal/login",
+  "/(portal)/portal/page": "/portal",
+  "/(portal)/portal/downloads/page": "/portal/downloads",
+  "/(portal)/portal/targets/[emerald_id]/page": "/portal/targets/[emerald_id]",
+  "/(portal)/portal/targets/page": "/portal/targets"
+}

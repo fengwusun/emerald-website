@@ -1,0 +1,44 @@
+{
+  "version": 3,
+  "middleware": {
+    "/": {
+      "files": [
+        "server/edge-runtime-webpack.js",
+        "server/middleware.js"
+      ],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/science-projects(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/science-projects"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/portal(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/portal/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/api\\/assets\\/sign(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/api/assets/sign"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/api\\/targets\\/image(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/api/targets/image"
+        }
+      ],
+      "wasm": [],
+      "assets": [],
+      "env": {
+        "__NEXT_BUILD_ID": "YSLF55JRF0sF2QibQ4yOt",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "5xlIoA82QkKa5POk5J7V51k+3IWcufzDfFhvGrBR5MU=",
+        "__NEXT_PREVIEW_MODE_ID": "8cc8b6237d4d0ef2283c668da3e665fc",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "18f684b760cc3e61187eb042507eb0ebf1e6ba230921a2d58a99d1604d9b0ea1",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "a90879f0ec1342b4ed1b3b3cd9008ad9c089a08c63606bfdf6372c47b977b5bd"
+      }
+    }
+  },
+  "functions": {},
+  "sortedMiddleware": [
+    "/"
+  ]
+}

@@ -6,9 +6,12 @@ import { getPublicOrigin } from "@/lib/request-origin";
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const loginPath = withBasePath("/portal/login");
+  const portalLoginPath = withBasePath("/portal/login");
 
-  if (pathname.startsWith("/portal/login") || pathname.startsWith(loginPath)) {
+  if (
+    pathname.startsWith("/portal/login") ||
+    pathname.startsWith(portalLoginPath)
+  ) {
     return NextResponse.next();
   }
 
@@ -27,5 +30,11 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/portal/:path*", "/api/assets/sign", "/api/targets/image"]
+  matcher: [
+    "/science-projects/:path*",
+    "/api/science-projects/:path*",
+    "/portal/:path*",
+    "/api/assets/sign",
+    "/api/targets/image"
+  ]
 };

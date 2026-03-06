@@ -6,7 +6,7 @@ import { withBasePath } from "@/lib/base-path";
 export default async function LoginPage({
   searchParams
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; error?: "1" | "config" | string }>;
 }) {
   const params = await searchParams;
   const cookieStore = await cookies();
@@ -27,7 +27,15 @@ export default async function LoginPage({
         <input type="hidden" name="next" value={nextPath} />
         <label htmlFor="password">Shared Password</label>
         <input id="password" name="password" type="password" required />
-        {params.error ? <p className="notice">Invalid password.</p> : null}
+        {params.error === "config" ? (
+          <p className="notice">
+            Login is not configured. Set `EMERALD_PORTAL_PASSWORD` and
+            `EMERALD_PORTAL_COOKIE_SECRET` on the server.
+          </p>
+        ) : null}
+        {params.error && params.error !== "config" ? (
+          <p className="notice">Invalid password.</p>
+        ) : null}
         <button type="submit" style={{ marginTop: "0.8rem" }}>
           Sign In
         </button>

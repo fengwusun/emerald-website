@@ -1,0 +1,18 @@
+{
+  "/api/assets/sign/route": "app/api/assets/sign/route.js",
+  "/api/portal/login/route": "app/api/portal/login/route.js",
+  "/api/portal/logout/route": "app/api/portal/logout/route.js",
+  "/api/targets/image/route": "app/api/targets/image/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/(public)/contact-data-policy/page": "app/(public)/contact-data-policy/page.js",
+  "/(public)/page": "app/(public)/page.js",
+  "/(public)/science-goals/page": "app/(public)/science-goals/page.js",
+  "/(public)/observing-plan/page": "app/(public)/observing-plan/page.js",
+  "/(public)/science-projects/page": "app/(public)/science-projects/page.js",
+  "/(public)/team/page": "app/(public)/team/page.js",
+  "/(portal)/portal/login/page": "app/(portal)/portal/login/page.js",
+  "/(portal)/portal/page": "app/(portal)/portal/page.js",
+  "/(portal)/portal/downloads/page": "app/(portal)/portal/downloads/page.js",
+  "/(portal)/portal/targets/[emerald_id]/page": "app/(portal)/portal/targets/[emerald_id]/page.js",
+  "/(portal)/portal/targets/page": "app/(portal)/portal/targets/page.js"
+}

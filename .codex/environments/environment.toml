@@ -12,3 +12,8 @@ command = '''
 npm install
 npm run dev
 '''
+
+[[actions]]
+name = "run"
+icon = "test"
+command = "npm run dev:clean"

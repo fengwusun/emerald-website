@@ -6,7 +6,7 @@ export default function ContactDataPolicyPage() {
         <h2>Contact</h2>
         <p>
           For team portal access requests and collaboration inquiries, contact
-          the PI/co-PI coordination team.
+          the EMERALD+DIVER PI/co-PI coordination team.
         </p>
       </section>
       <section className="card">
