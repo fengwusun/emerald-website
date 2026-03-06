@@ -156,7 +156,7 @@ export default async function TargetDetailPage({
         )}
       </section>
 
-      {prismX1dAssets.length > 0 ? <Spectrum1DViewer assets={prismX1dAssets} /> : null}
+      {prismX1dAssets.length > 0 ? <Spectrum1DViewer assets={prismX1dAssets} zSpec={target.z_spec} /> : null}
 
       <form method="post" action={withBasePath("/api/portal/logout")}>
         <button type="submit" className="secondary">
