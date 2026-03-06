@@ -14,9 +14,11 @@ export default function TeamPage() {
         {members.map((member) => (
           <article className="card" key={member.name}>
             <h2>{member.name}</h2>
-            <p>
-              <strong>{member.role}</strong>
-            </p>
+            {member.role !== "Co-Investigator" ? (
+              <p>
+                <strong>{member.role}</strong>
+              </p>
+            ) : null}
             <p>{member.affiliation}</p>
             {member.orcid ? <p className="muted">ORCID: {member.orcid}</p> : null}
             {member.profile_url ? (
