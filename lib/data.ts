@@ -41,6 +41,13 @@ type PrismAssetRecord = {
   filename: string;
 };
 
+type PrismFitsAssetRecord = {
+  sourceId: string;
+  observationNumber: string;
+  filename: string;
+  kind: "s2d" | "x1d";
+};
+
 type ObservationMode = {
   instrument: string;
   status: string;
@@ -156,7 +163,21 @@ function buildPrismSpectrumAsset(record: PrismAssetRecord) {
   };
 }
 
-function attachAssets(target: TargetRecord, nextAssets: ReturnType<typeof buildDiverSpectrumAsset>[]): TargetRecord {
+function buildPrismFitsAsset(record: PrismFitsAssetRecord) {
+  const label = record.kind === "s2d" ? "DIVER PRISM Spectrum 2D FITS" : "DIVER PRISM Spectrum 1D FITS";
+  return {
+    asset_type: "other" as const,
+    label: `${label} (o${record.observationNumber})`,
+    storage_key: `${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    preview_url: `/api/targets/file?file=${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    access_level: "team" as const
+  };
+}
+
+function attachAssets(
+  target: TargetRecord,
+  nextAssets: Array<TargetRecord["ancillary_assets"][number]>
+): TargetRecord {
   if (nextAssets.length === 0) {
     return target;
   }
@@ -218,6 +239,43 @@ function loadPrismAssetsBySourceId(): Map<string, PrismAssetRecord[]> {
   return bySourceId;
 }
 
+function loadPrismFitsAssetsBySourceId(): Map<string, PrismFitsAssetRecord[]> {
+  const prismDir = path.join(localMediaBaseDir(), DIVER_PRISM_PLOT_DIR);
+  if (!fs.existsSync(prismDir)) {
+    return new Map();
+  }
+
+  const files = fs.readdirSync(prismDir);
+  const bySourceId = new Map<string, PrismFitsAssetRecord[]>();
+  const fitsPattern = /^jw_o(\d+)_([0-9]+)_CLEAR_PRISM_(s2d|x1d)\.fits$/i;
+
+  for (const filename of files) {
+    const match = filename.match(fitsPattern);
+    if (!match) {
+      continue;
+    }
+    const kind = match[3].toLowerCase() === "s2d" ? "s2d" : "x1d";
+    const record: PrismFitsAssetRecord = {
+      observationNumber: match[1],
+      sourceId: match[2],
+      filename,
+      kind
+    };
+    const existing = bySourceId.get(record.sourceId) ?? [];
+    existing.push(record);
+    bySourceId.set(record.sourceId, existing);
+  }
+
+  for (const [sourceId, records] of bySourceId.entries()) {
+    bySourceId.set(
+      sourceId,
+      records.sort((a, b) => a.filename.localeCompare(b.filename))
+    );
+  }
+
+  return bySourceId;
+}
+
 function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
   if (!fs.existsSync(VI_CATALOG_PATH)) {
     return new Map();
@@ -254,6 +312,7 @@ export function loadTargets(): TargetRecord[] {
   const csvRaw = fs.readFileSync(csvPath, "utf8");
   const viCatalogBySourceId = loadViCatalogBySourceId();
   const prismAssetsBySourceId = loadPrismAssetsBySourceId();
+  const prismFitsAssetsBySourceId = loadPrismFitsAssetsBySourceId();
 
   const records = parse(csvRaw, {
     columns: true,
@@ -288,8 +347,10 @@ export function loadTargets(): TargetRecord[] {
 
     const viRecord = viCatalogBySourceId.get(sourceId);
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
+    const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
     const prismAssets = prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord));
-    let merged = attachAssets(baseTarget, prismAssets);
+    const prismFitsAssets = prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord));
+    let merged = attachAssets(baseTarget, [...prismAssets, ...prismFitsAssets]);
 
     if (prismAssets.length > 0) {
       merged = {
@@ -332,7 +393,8 @@ export function loadTargets(): TargetRecord[] {
 
   const allCatalogSourceIds = new Set<string>([
     ...viCatalogBySourceId.keys(),
-    ...prismAssetsBySourceId.keys()
+    ...prismAssetsBySourceId.keys(),
+    ...prismFitsAssetsBySourceId.keys()
   ]);
 
   for (const sourceId of allCatalogSourceIds) {
@@ -342,15 +404,17 @@ export function loadTargets(): TargetRecord[] {
 
     const viRecord = viCatalogBySourceId.get(sourceId);
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
+    const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
     const hasGrating = viRecord !== undefined;
-    const hasPrism = prismRecords.length > 0;
+    const hasPrism = prismRecords.length > 0 || prismFitsRecords.length > 0;
     const instruments = dedupe([
       ...(hasGrating ? [DIVER_GRATING_INSTRUMENT] : []),
       ...(hasPrism ? [DIVER_PRISM_INSTRUMENT] : [])
     ]);
     const ancillaryAssets = [
       ...(hasGrating ? [buildDiverSpectrumAsset(sourceId)] : []),
-      ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord))
+      ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord)),
+      ...prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord))
     ];
     const noteParts = [
       viRecord?.notes ?? "",

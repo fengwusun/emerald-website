@@ -5,6 +5,10 @@ import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
+function isImageAssetPath(pathname: string): boolean {
+  return /\.(png|jpg|jpeg)(\?|$)/i.test(pathname);
+}
+
 export default async function TargetDetailPage({
   params
 }: {
@@ -113,10 +117,13 @@ export default async function TargetDetailPage({
                   <div className="grid">
                     <p>
                       <a href={withBasePathForApiUrl(asset.preview_url)} target="_blank" rel="noreferrer">
-                        Preview
+                        {/\.fits$/i.test(asset.storage_key) ? "Download FITS" : "Preview"}
                       </a>
                     </p>
-                    {asset.asset_type === "image" || asset.asset_type === "spectrum" ? (
+                    {(asset.asset_type === "image" ||
+                      (asset.asset_type === "spectrum" &&
+                        asset.preview_url &&
+                        isImageAssetPath(asset.preview_url))) ? (
                       <Image
                         src={withBasePathForApiUrl(asset.preview_url)}
                         alt={`${target.emerald_id} ${asset.label}`}
