@@ -63,6 +63,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const email = member.email.trim().toLowerCase();
+  if (!email) {
+    return NextResponse.json(
+      { error: "Selected submitter does not have an email in the Co-I list yet." },
+      { status: 400 }
+    );
+  }
+
   const state = await readScienceProjectsState();
   const nextState = {
     projects: [
@@ -74,7 +82,7 @@ export async function POST(request: Request) {
         announced: false,
         submitter: {
           name: member.name,
-          email: member.email.trim().toLowerCase(),
+          email,
           updateLink,
           updateDate: updateLink ? nowIsoDate() : ""
         },

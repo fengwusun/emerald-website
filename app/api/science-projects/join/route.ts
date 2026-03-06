@@ -59,13 +59,20 @@ export async function POST(request: Request) {
     );
   }
 
+  const email = member.email.trim().toLowerCase();
+  if (!email) {
+    return NextResponse.json(
+      { error: "Selected member does not have an email in the Co-I list yet." },
+      { status: 400 }
+    );
+  }
+
   const state = await readScienceProjectsState();
   const project = state.projects.find((item) => item.id === projectId);
   if (!project) {
     return NextResponse.json({ error: "Project not found." }, { status: 404 });
   }
 
-  const email = member.email.trim().toLowerCase();
   const existing = project.joiners.find((joiner) => joiner.email === email);
 
   if (existing && (!updateLink || existing.updateLink === updateLink)) {
