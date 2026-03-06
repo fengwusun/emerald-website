@@ -150,6 +150,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
   const plotRef = useRef<HTMLDivElement | null>(null);
   const templateZRef = useRef(0);
   const templateLineByShapeIndexRef = useRef<Map<number, EmissionLine>>(new Map());
+  const baseRangeRef = useRef<{ x: [number, number]; y: [number, number] } | null>(null);
   const suppressRelayoutRef = useRef(false);
   const normalizedZ = normalizeZSpec(zSpec);
   const hasKnownRedshift = Number.isFinite(normalizedZ) && normalizedZ > 0;
@@ -160,7 +161,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
   );
 
   useEffect(() => {
-    const initialZ = hasKnownRedshift ? roundRedshift(normalizedZ) : 0;
+    const initialZ = hasKnownRedshift ? roundRedshift(normalizedZ) : 1;
     setTemplateZ(initialZ);
     setZInput(initialZ.toFixed(4));
     setTemplateObservedAnchor(null);
@@ -173,12 +174,27 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
 
   const applyTemplatePositions = useCallback((nextZ: number) => {
     if (!plotRef.current || !window.Plotly) return;
+    const graphDiv = plotRef.current as HTMLDivElement & {
+      layout?: { xaxis?: { range?: [number, number] }; yaxis?: { range?: [number, number] } };
+    };
     const updates: Record<string, number> = {};
     for (const [shapeIndex, line] of templateLineByShapeIndexRef.current.entries()) {
       const nextX = line.restUm * (1 + nextZ);
       updates[`shapes[${shapeIndex}].x0`] = nextX;
       updates[`shapes[${shapeIndex}].x1`] = nextX;
       updates[`annotations[${shapeIndex}].x`] = nextX;
+    }
+    const xRange = graphDiv.layout?.xaxis?.range;
+    const yRange = graphDiv.layout?.yaxis?.range;
+    if (xRange && Number.isFinite(xRange[0]) && Number.isFinite(xRange[1])) {
+      updates["xaxis.range[0]"] = xRange[0];
+      updates["xaxis.range[1]"] = xRange[1];
+      updates["xaxis.autorange"] = 0;
+    }
+    if (yRange && Number.isFinite(yRange[0]) && Number.isFinite(yRange[1])) {
+      updates["yaxis.range[0]"] = yRange[0];
+      updates["yaxis.range[1]"] = yRange[1];
+      updates["yaxis.autorange"] = 0;
     }
     if (Object.keys(updates).length === 0) {
       return;
@@ -301,6 +317,11 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
         const xMax = x.length > 0 ? Math.max(...x) : 0;
         const yMin = y.length > 0 ? Math.min(...y) : 0;
         const yMax = y.length > 0 ? Math.max(...y) : 1;
+        const ySpan = Math.max(1e-12, yMax - yMin);
+        const yPad = ySpan * 0.08;
+        const baseXRange: [number, number] = [xMin, xMax];
+        const baseYRange: [number, number] = [yMin - yPad, yMax + yPad];
+        baseRangeRef.current = { x: baseXRange, y: baseYRange };
         const overlayZ = templateZRef.current;
         const canShowOverlay = showLines && Number.isFinite(overlayZ) && overlayZ > -0.999;
 
@@ -350,18 +371,23 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
             text: `${selectedAssetLabel || "PRISM x1d"} (JADES-${currentPayload.meta.source_id})`,
             y: 0.975
           },
+          uirevision: "spectrum-1d-static",
           margin: { t: 86, r: 18, b: 52, l: 72 },
           paper_bgcolor: "#ffffff",
           plot_bgcolor: "#fbfffd",
           xaxis: {
             title: `Wavelength (${currentPayload.meta.wavelength_unit})`,
             gridcolor: "#d8ece6",
-            zeroline: false
+            zeroline: false,
+            autorange: false,
+            range: baseXRange
           },
           yaxis: {
             title: `Flux (${currentPayload.meta.flux_unit})`,
             gridcolor: "#d8ece6",
-            zeroline: false
+            zeroline: false,
+            autorange: false,
+            range: baseYRange
           },
           legend: { orientation: "h", y: 1.03, x: 0 },
           shapes: lineShapes,
@@ -385,6 +411,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
         if (graphDiv.removeAllListeners) {
           graphDiv.removeAllListeners("plotly_relayout");
           graphDiv.removeAllListeners("plotly_relayouting");
+          graphDiv.removeAllListeners("plotly_doubleclick");
         }
         const handleTemplateDragEvent = (eventData: Record<string, unknown>) => {
             if (suppressRelayoutRef.current) {
@@ -422,6 +449,24 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
         if (graphDiv.on) {
           graphDiv.on("plotly_relayouting", handleTemplateDragEvent);
           graphDiv.on("plotly_relayout", handleTemplateDragEvent);
+          graphDiv.on("plotly_doubleclick", () => {
+            const base = baseRangeRef.current;
+            if (!base || !window.Plotly || !root) return false;
+            suppressRelayoutRef.current = true;
+            void window.Plotly
+              .relayout(root, {
+                "xaxis.autorange": 0,
+                "xaxis.range[0]": base.x[0],
+                "xaxis.range[1]": base.x[1],
+                "yaxis.autorange": 0,
+                "yaxis.range[0]": base.y[0],
+                "yaxis.range[1]": base.y[1]
+              })
+              .finally(() => {
+                suppressRelayoutRef.current = false;
+              });
+            return false;
+          });
         }
         if (!cancelled) {
           setPlotReady(true);
@@ -449,12 +494,23 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
     showLines
   ]);
 
-  function resetAxes() {
+function resetAxes() {
     if (!plotRef.current || !window.Plotly) return;
-    void window.Plotly.relayout(plotRef.current, {
-      "xaxis.autorange": true,
-      "yaxis.autorange": true
-    });
+    const base = baseRangeRef.current;
+    if (!base) return;
+    suppressRelayoutRef.current = true;
+    void window.Plotly
+      .relayout(plotRef.current, {
+        "xaxis.autorange": 0,
+        "xaxis.range[0]": base.x[0],
+        "xaxis.range[1]": base.x[1],
+        "yaxis.autorange": 0,
+        "yaxis.range[0]": base.y[0],
+        "yaxis.range[1]": base.y[1]
+      })
+      .finally(() => {
+        suppressRelayoutRef.current = false;
+      });
   }
 
   return (
