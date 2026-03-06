@@ -16,6 +16,9 @@ export default async function TargetDetailPage({
     notFound();
   }
 
+  const jadesIdMatch = target.name.match(/^JADES-(\d+)$/);
+  const jadesNumericId = jadesIdMatch ? jadesIdMatch[1] : null;
+
   return (
     <div className="grid">
       <p>
@@ -42,6 +45,20 @@ export default async function TargetDetailPage({
           >
             Open source in GOODS-N FitsMap
           </a>
+        </p>
+        <p>
+          <strong>JADES EAZY SED:</strong>{" "}
+          {jadesNumericId ? (
+            <a
+              href={`https://jades.idies.jhu.edu/goods-n/goodsn_eazy_seds_v10e1/${jadesNumericId}_EAZY_SED.png`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open SED plot
+            </a>
+          ) : (
+            <span className="muted">Unavailable</span>
+          )}
         </p>
         <p>
           <strong>Status / Priority:</strong> {target.status} / {target.priority}
