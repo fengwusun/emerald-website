@@ -36,7 +36,8 @@ export const TargetRecordSchema = RawTargetRowSchema.transform((row, ctx) => {
     const parsedAssets = JSON.parse(row.ancillary_assets);
     return {
       ...row,
-      ancillary_assets: z.array(AncillaryAssetSchema).parse(parsedAssets)
+      ancillary_assets: z.array(AncillaryAssetSchema).parse(parsedAssets),
+      emission_line_tags: [] as string[]
     };
   } catch {
     ctx.addIssue({

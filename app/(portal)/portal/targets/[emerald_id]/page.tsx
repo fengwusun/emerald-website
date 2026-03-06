@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
+import { getQuickTagsForTarget } from "@/lib/target-tags";
 
 export default async function TargetDetailPage({
   params
@@ -18,6 +19,7 @@ export default async function TargetDetailPage({
 
   const jadesIdMatch = target.name.match(/^JADES-(\d+)$/);
   const jadesNumericId = jadesIdMatch ? jadesIdMatch[1] : null;
+  const quickTags = getQuickTagsForTarget(target);
 
   return (
     <div className="grid">
@@ -68,6 +70,13 @@ export default async function TargetDetailPage({
         </p>
         <p>
           <strong>Notes:</strong> {target.notes || "None"}
+        </p>
+        <p>
+          <strong>Quick tags:</strong> {quickTags.length > 0 ? quickTags.join(", ") : "None"}
+        </p>
+        <p>
+          <strong>Emission line tags:</strong>{" "}
+          {target.emission_line_tags.length > 0 ? target.emission_line_tags.join(", ") : "None in VI table"}
         </p>
       </section>
 

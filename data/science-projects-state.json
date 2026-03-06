@@ -12,6 +12,18 @@
           "email": "egami@arizona.edu",
           "updateLink": "",
           "updateDate": ""
+        },
+        {
+          "name": "Daniel J. Eisenstein",
+          "email": "deisenstein@cfa.harvard.edu",
+          "updateLink": "",
+          "updateDate": ""
+        },
+        {
+          "name": "Zheng Cai",
+          "email": "zcai@tsinghua.edu.cn",
+          "updateLink": "",
+          "updateDate": ""
         }
       ]
     },
@@ -21,7 +33,14 @@
       "abstract": "Track how key emission-line ratios evolve with redshift and connect ionization conditions to host-galaxy properties.",
       "announced": true,
       "submitter": null,
-      "joiners": []
+      "joiners": [
+        {
+          "name": "Lola Danhaive",
+          "email": "angelicalola.danhaive@gmail.com",
+          "updateLink": "",
+          "updateDate": ""
+        }
+      ]
     },
     {
       "id": "host-nucleus-connection",
@@ -29,6 +48,26 @@
       "abstract": "Link AGN signatures with stellar mass growth, star-formation activity, and morphology in deep legacy fields.",
       "announced": true,
       "submitter": null,
+      "joiners": [
+        {
+          "name": "Xiaohui Fan",
+          "email": "xfan@arizona.edu",
+          "updateLink": "",
+          "updateDate": ""
+        }
+      ]
+    },
+    {
+      "id": "submitted-1772806015324-mjuh9o",
+      "title": "AI for sci",
+      "abstract": "ai for sci",
+      "announced": true,
+      "submitter": {
+        "name": "Zheng Cai",
+        "email": "zcai@tsinghua.edu.cn",
+        "updateLink": "",
+        "updateDate": ""
+      },
       "joiners": []
     }
   ],

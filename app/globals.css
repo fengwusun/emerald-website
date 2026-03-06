@@ -213,8 +213,11 @@ th button {
   border-radius: 999px;
   border: 1px solid #a8dbc9;
   background: #ebfaf4;
+  color: var(--ink);
   padding: 0.1rem 0.5rem;
   font-size: 0.8rem;
+  line-height: 1.25;
+  text-decoration: none;
 }
 
 .jades-cell {

@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
+import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
 type SortField = "name" | "z_spec" | "status" | "priority" | "assets";
 
 type FilterState = {
   query: string;
+  quickTagQuery: string;
+  emissionTagQuery: string;
   status: string;
   priority: string;
   zMin: string;
@@ -21,6 +24,8 @@ type FilterState = {
 
 const DEFAULT_FILTERS: FilterState = {
   query: "",
+  quickTagQuery: "",
+  emissionTagQuery: "",
   status: "all",
   priority: "all",
   zMin: "",
@@ -29,6 +34,41 @@ const DEFAULT_FILTERS: FilterState = {
   coneDec: "",
   coneRadiusArcsec: "2"
 };
+
+function parseSelectedTags(value: string): string[] {
+  const seen = new Set<string>();
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+}
+
+function toggleTagValue(currentValue: string, tag: string): string {
+  const selected = parseSelectedTags(currentValue);
+  const tagLower = tag.toLowerCase();
+  const nextSelected = selected.some((item) => item.toLowerCase() === tagLower)
+    ? selected.filter((item) => item.toLowerCase() !== tagLower)
+    : [...selected, tag];
+  return nextSelected.join(", ");
+}
+
+function matchesAllSelectedTags(targetTags: string[], selectedTags: string[]): boolean {
+  if (selectedTags.length === 0) {
+    return true;
+  }
+
+  return selectedTags.every((selectedTag) =>
+    targetTags.some((targetTag) => targetTag.toLowerCase() === selectedTag.toLowerCase())
+  );
+}
 
 function toRadians(value: number): number {
   return (value * Math.PI) / 180;
@@ -60,15 +100,6 @@ function angularSeparationArcsec(raDeg1: number, decDeg1: number, raDeg2: number
   return (angleRad * 180 * 3600) / Math.PI;
 }
 
-function commentTags(notes: string): string[] {
-  return notes
-    .split(/[;,/|]/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .map((item) => (item.length > 28 ? `${item.slice(0, 28)}...` : item))
-    .slice(0, 3);
-}
-
 function firstImagePreview(target: TargetRecord): string | null {
   for (const asset of target.ancillary_assets) {
     if (asset.asset_type === "image" && asset.preview_url) {
@@ -92,18 +123,56 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   const [pageSize, setPageSize] = useState(25);
   const [pageInput, setPageInput] = useState("1");
 
+  const allQuickTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const target of targets) {
+      for (const tag of getQuickTagsForTarget(target)) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tag]) => tag);
+  }, [targets]);
+
+  const allEmissionTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const target of targets) {
+      for (const tag of getEmissionLineTagsForTarget(target)) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tag]) => tag);
+  }, [targets]);
+
   const filtered = useMemo(() => {
     const q = appliedFilters.query.trim().toLowerCase();
+    const selectedQuickTags = parseSelectedTags(appliedFilters.quickTagQuery);
+    const selectedEmissionTags = parseSelectedTags(appliedFilters.emissionTagQuery);
     const zMinNum = appliedFilters.zMin.trim() === "" ? null : Number(appliedFilters.zMin);
     const zMaxNum = appliedFilters.zMax.trim() === "" ? null : Number(appliedFilters.zMax);
 
     let rows = targets.filter((target) => {
+      const quickTags = getQuickTagsForTarget(target);
+      const emissionTags = getEmissionLineTagsForTarget(target);
       if (appliedFilters.status !== "all" && target.status !== appliedFilters.status) return false;
       if (appliedFilters.priority !== "all" && target.priority !== appliedFilters.priority) return false;
       if (zMinNum !== null && Number.isFinite(zMinNum) && normalizedZSpec(target.z_spec) < zMinNum) return false;
       if (zMaxNum !== null && Number.isFinite(zMaxNum) && normalizedZSpec(target.z_spec) > zMaxNum) return false;
+      if (!matchesAllSelectedTags(quickTags, selectedQuickTags)) return false;
+      if (!matchesAllSelectedTags(emissionTags, selectedEmissionTags)) return false;
       if (!q) return true;
-      return target.emerald_id.toLowerCase().includes(q) || target.name.toLowerCase().includes(q);
+      return (
+        target.emerald_id.toLowerCase().includes(q) ||
+        target.name.toLowerCase().includes(q) ||
+        target.notes.toLowerCase().includes(q) ||
+        quickTags.some((tag) => tag.toLowerCase().includes(q)) ||
+        emissionTags.some((tag) => tag.toLowerCase().includes(q))
+      );
     });
 
     const hasConeRa = appliedFilters.coneRa.trim() !== "";
@@ -201,6 +270,23 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     setPageInput(String(nextPage));
   }
 
+  function setQuickTagFilter(tag: string) {
+    setDraftFilters((prev) => ({ ...prev, quickTagQuery: toggleTagValue(prev.quickTagQuery, tag) }));
+    setAppliedFilters((prev) => ({ ...prev, quickTagQuery: toggleTagValue(prev.quickTagQuery, tag) }));
+    setPage(1);
+    setPageInput("1");
+  }
+
+  function setEmissionTagFilter(tag: string) {
+    setDraftFilters((prev) => ({ ...prev, emissionTagQuery: toggleTagValue(prev.emissionTagQuery, tag) }));
+    setAppliedFilters((prev) => ({ ...prev, emissionTagQuery: toggleTagValue(prev.emissionTagQuery, tag) }));
+    setPage(1);
+    setPageInput("1");
+  }
+
+  const selectedQuickTags = parseSelectedTags(appliedFilters.quickTagQuery);
+  const selectedEmissionTags = parseSelectedTags(appliedFilters.emissionTagQuery);
+
   return (
     <div className="grid">
       <section className="card grid grid-2">
@@ -212,6 +298,28 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
               setDraftFilters((prev) => ({ ...prev, query: event.target.value }));
             }}
             placeholder="JADES-1008580 or EMR-8580"
+          />
+        </label>
+        <label>
+          Quick tag
+          <input
+            list="target-quick-tags"
+            value={draftFilters.quickTagQuery}
+            onChange={(event) => {
+              setDraftFilters((prev) => ({ ...prev, quickTagQuery: event.target.value }));
+            }}
+            placeholder="Select one or more"
+          />
+        </label>
+        <label>
+          Emission line tag
+          <input
+            list="target-emission-tags"
+            value={draftFilters.emissionTagQuery}
+            onChange={(event) => {
+              setDraftFilters((prev) => ({ ...prev, emissionTagQuery: event.target.value }));
+            }}
+            placeholder="Select one or more"
           />
         </label>
         <label>
@@ -267,6 +375,68 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           />
         </label>
       </section>
+
+      {allQuickTags.length > 0 ? (
+        <section className="card">
+          <p className="muted" style={{ marginTop: 0 }}>
+            Quick tags
+          </p>
+          {selectedQuickTags.length > 0 ? (
+            <p className="muted">Selected: {selectedQuickTags.join(", ")}</p>
+          ) : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+            {allQuickTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className="secondary"
+                onClick={() => setQuickTagFilter(tag)}
+                style={{
+                  padding: "0.22rem 0.52rem",
+                  borderRadius: "999px",
+                  background:
+                    selectedQuickTags.some((item) => item.toLowerCase() === tag.toLowerCase())
+                      ? "#d9f4ea"
+                      : undefined
+                }}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {allEmissionTags.length > 0 ? (
+        <section className="card">
+          <p className="muted" style={{ marginTop: 0 }}>
+            Emission line tags
+          </p>
+          {selectedEmissionTags.length > 0 ? (
+            <p className="muted">Selected: {selectedEmissionTags.join(", ")}</p>
+          ) : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+            {allEmissionTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                className="secondary"
+                onClick={() => setEmissionTagFilter(tag)}
+                style={{
+                  padding: "0.22rem 0.52rem",
+                  borderRadius: "999px",
+                  background:
+                    selectedEmissionTags.some((item) => item.toLowerCase() === tag.toLowerCase())
+                      ? "#d9f4ea"
+                      : undefined
+                }}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="card grid grid-2">
         <label>
@@ -347,7 +517,8 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
               <th>
                 <button onClick={() => toggleSort("priority")}>Priority {sortGlyph("priority")}</button>
               </th>
-              <th>Comment</th>
+              <th>Quick Tags</th>
+              <th>Emission Lines</th>
               <th>FitsMap</th>
               <th>
                 <button onClick={() => toggleSort("assets")}>Assets {sortGlyph("assets")}</button>
@@ -356,7 +527,8 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           </thead>
           <tbody>
             {currentRows.map((target) => {
-              const tags = commentTags(target.notes);
+              const quickTags = getQuickTagsForTarget(target);
+              const emissionTags = getEmissionLineTagsForTarget(target);
               const preview = firstImagePreview(target);
               const jadesId = jadesNumericId(target.name);
               return (
@@ -392,12 +564,39 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                   </td>
                   <td>{target.priority}</td>
                   <td>
-                    {tags.length > 0 ? (
+                    {quickTags.length > 0 ? (
                       <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
-                        {tags.map((tag) => (
-                          <span key={`${target.emerald_id}-${tag}`} className="tag">
+                        {quickTags.map((tag) => (
+                          <button
+                            key={`${target.emerald_id}-${tag}`}
+                            type="button"
+                            className="tag"
+                            onClick={() => setQuickTagFilter(tag)}
+                            style={{ cursor: "pointer" }}
+                            title={`Filter by quick tag: ${tag}`}
+                          >
                             {tag}
-                          </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="muted">-</span>
+                    )}
+                  </td>
+                  <td>
+                    {emissionTags.length > 0 ? (
+                      <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
+                        {emissionTags.map((tag) => (
+                          <button
+                            key={`${target.emerald_id}-line-${tag}`}
+                            type="button"
+                            className="tag"
+                            onClick={() => setEmissionTagFilter(tag)}
+                            style={{ cursor: "pointer" }}
+                            title={`Filter by emission line: ${tag}`}
+                          >
+                            {tag}
+                          </button>
                         ))}
                       </div>
                     ) : (
@@ -462,6 +661,18 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           </button>
         </div>
       </section>
+
+      <datalist id="target-quick-tags">
+        {allQuickTags.map((tag) => (
+          <option key={tag} value={tag} />
+        ))}
+      </datalist>
+
+      <datalist id="target-emission-tags">
+        {allEmissionTags.map((tag) => (
+          <option key={tag} value={tag} />
+        ))}
+      </datalist>
     </div>
   );
 }
