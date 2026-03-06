@@ -318,22 +318,16 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     let rows: TargetRecord[];
 
     if (coneEnabled) {
-      let best: TargetRecord | null = null;
-      let bestSep = Number.POSITIVE_INFINITY;
-
+      const coneMatches: Array<{ target: TargetRecord; separationArcsec: number }> = [];
       for (const target of targets) {
         const sep = coneMetricSeparationArcsec(raNum, decNum, target.ra, target.dec);
-        if (sep < bestSep) {
-          bestSep = sep;
-          best = target;
+        if (sep <= radiusNum) {
+          coneMatches.push({ target, separationArcsec: sep });
         }
       }
-
-      if (best && bestSep <= radiusNum) {
-        rows = [best];
-      } else {
-        rows = [];
-      }
+      rows = coneMatches
+        .sort((a, b) => a.separationArcsec - b.separationArcsec || a.target.name.localeCompare(b.target.name))
+        .map((match) => match.target);
     } else {
       rows = targets.filter((target) => {
         const quickTags = getQuickTagsForTarget(target);
