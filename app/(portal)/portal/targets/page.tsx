@@ -1,5 +1,6 @@
 import { PortalTargetTable } from "@/components/portal-target-table";
 import { loadTargets } from "@/lib/data";
+import { withBasePath } from "@/lib/base-path";
 
 export default function PortalTargetsPage() {
   const targets = loadTargets();
@@ -10,6 +11,13 @@ export default function PortalTargetsPage() {
       <p className="muted">
         Search and filter EMERALD+DIVER targets. Click a target to inspect
         ancillary data products.
+      </p>
+      <p className="muted">
+        Need shutter footprints?{" "}
+        <a href={withBasePath("/fitsmap/index.html")} target="_blank" rel="noreferrer">
+          Open FitsMap
+        </a>
+        .
       </p>
       <PortalTargetTable targets={targets} />
     </div>
