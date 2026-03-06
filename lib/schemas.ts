@@ -51,6 +51,7 @@ export type TargetRecord = z.infer<typeof TargetRecordSchema>;
 
 export const CoiMemberSchema = z.object({
   name: z.string().min(1),
+  email: z.string().email(),
   role: z.string().min(1),
   affiliation: z.string().min(1),
   profile_url: z.string().url().optional(),
