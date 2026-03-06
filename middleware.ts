@@ -32,7 +32,6 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/science-projects/:path*",
-    "/api/science-projects/:path*",
     "/portal/:path*",
     "/api/assets/sign",
     "/api/targets/image"

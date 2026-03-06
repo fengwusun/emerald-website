@@ -1,9 +1,12 @@
 node_modules
 .venv
 .next
+.next.*
 out
 coverage
+tsconfig.tsbuildinfo
 .env.local
 .env.*
 !.env.example
 .DS_Store
+.codex/
