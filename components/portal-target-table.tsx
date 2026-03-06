@@ -80,7 +80,7 @@ function toRadians(value: number): number {
 }
 
 function normalizedZSpec(value: number): number {
-  return Math.abs(value - 1) < 1e-9 ? -1 : value;
+  return Math.abs(value - 1) < 1e-9 || Math.abs(value) < 1e-9 ? -1 : value;
 }
 
 function formatZSpec(value: number): string {
@@ -108,6 +108,15 @@ function angularSeparationArcsec(raDeg1: number, decDeg1: number, raDeg2: number
 function firstImagePreview(target: TargetRecord): string | null {
   for (const asset of target.ancillary_assets) {
     if (asset.asset_type === "image" && asset.preview_url) {
+      return withBasePathForApiUrl(asset.preview_url);
+    }
+  }
+  return null;
+}
+
+function firstSpectrumPreview(target: TargetRecord): string | null {
+  for (const asset of target.ancillary_assets) {
+    if (asset.asset_type === "spectrum" && asset.preview_url) {
       return withBasePathForApiUrl(asset.preview_url);
     }
   }
@@ -660,6 +669,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
               const emissionTags = getEmissionLineTagsForTarget(target);
               const observationModes = observationModesForDisplay(target);
               const preview = firstImagePreview(target);
+              const spectrumPreview = firstSpectrumPreview(target);
               const jadesId = jadesNumericId(target.name);
               return (
                 <tr key={target.emerald_id}>
@@ -705,24 +715,55 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                   <td>
                     {observationModes.length > 0 ? (
                       <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
-                        {observationModes.map((mode) => (
-                          <button
-                            key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
-                            type="button"
-                            className="tag"
-                            onClick={() => {
-                              const nextValue = toggleTagValue(appliedFilters.instrumentQuery, mode.instrument);
-                              setDraftFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
-                              setAppliedFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
-                              setPage(1);
-                              setPageInput("1");
-                            }}
-                            style={{ cursor: "pointer" }}
-                            title={`Filter by instrument: ${mode.instrument}`}
-                          >
-                            {mode.instrument}
-                          </button>
-                        ))}
+                        {observationModes.map((mode) => {
+                          const showSpectrum = mode.instrument.toLowerCase() === "g140m/f070lp" && spectrumPreview;
+                          if (showSpectrum) {
+                            return (
+                              <span
+                                key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
+                                className="jades-cell"
+                              >
+                                <a
+                                  href={spectrumPreview}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="tag"
+                                  title={`${mode.instrument}: click to open spectrum`}
+                                >
+                                  {mode.instrument}
+                                </a>
+                                <span className="hover-preview hover-preview--spectrum" role="tooltip">
+                                  <Image
+                                    src={spectrumPreview}
+                                    alt={`${target.name} ${mode.instrument} spectrum`}
+                                    width={320}
+                                    height={220}
+                                    unoptimized
+                                  />
+                                </span>
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
+                              type="button"
+                              className="tag"
+                              onClick={() => {
+                                const nextValue = toggleTagValue(appliedFilters.instrumentQuery, mode.instrument);
+                                setDraftFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                                setAppliedFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                                setPage(1);
+                                setPageInput("1");
+                              }}
+                              style={{ cursor: "pointer" }}
+                              title={`Filter by instrument: ${mode.instrument}`}
+                            >
+                              {mode.instrument}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <span className="muted">-</span>

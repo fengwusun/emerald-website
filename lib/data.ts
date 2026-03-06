@@ -26,6 +26,9 @@ const EMISSION_TAG_COLUMNS: ReadonlyArray<{ column: string; tag: string }> = [
 ];
 
 type ViCatalogRecord = {
+  sourceId: string;
+  redshift: number | null;
+  notes: string;
   emissionLineTags: string[];
 };
 
@@ -101,6 +104,54 @@ function isYesLike(value: unknown): boolean {
   return normalized === "yes" || normalized === "y" || normalized === "true" || normalized === "1";
 }
 
+function parseViRedshift(value: unknown): number | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return parsed;
+}
+
+function composeViNotes(row: Record<string, string>): string {
+  const pieces = [row.comment_secondary, row.comment_lin]
+    .map((value) => value?.trim() ?? "")
+    .filter((value) => value.length > 0);
+
+  if (pieces.length === 0) {
+    return "DIVER grating source";
+  }
+
+  return dedupe(pieces).join(" | ");
+}
+
+function buildDiverSpectrumAsset(sourceId: string) {
+  return {
+    asset_type: "spectrum" as const,
+    label: "DIVER Grating Spectrum",
+    storage_key: `diver_grating_plots/spectrum_plot_${sourceId}.png`,
+    preview_url: `/api/targets/image?file=diver_grating_plots/spectrum_plot_${sourceId}.png`,
+    access_level: "team" as const
+  };
+}
+
+function attachDiverSpectrumAsset(target: TargetRecord, sourceId: string): TargetRecord {
+  const nextAsset = buildDiverSpectrumAsset(sourceId);
+  const alreadyExists = target.ancillary_assets.some(
+    (asset) => asset.storage_key.toLowerCase() === nextAsset.storage_key.toLowerCase()
+  );
+  if (alreadyExists) {
+    return target;
+  }
+
+  return {
+    ...target,
+    ancillary_assets: [...target.ancillary_assets, nextAsset]
+  };
+}
+
 function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
   if (!fs.existsSync(VI_CATALOG_PATH)) {
     return new Map();
@@ -121,7 +172,12 @@ function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
     }
 
     const emissionLineTags = EMISSION_TAG_COLUMNS.filter(({ column }) => isYesLike(row[column])).map(({ tag }) => tag);
-    catalogBySourceId.set(sourceId, { emissionLineTags });
+    catalogBySourceId.set(sourceId, {
+      sourceId,
+      redshift: parseViRedshift(row.redshift),
+      notes: composeViNotes(row),
+      emissionLineTags
+    });
   }
 
   return catalogBySourceId;
@@ -138,7 +194,7 @@ export function loadTargets(): TargetRecord[] {
     trim: true
   }) as Record<string, string>[];
 
-  return records.map((record) => {
+  const targets = records.map((record) => {
     const target = TargetRecordSchema.parse(record);
     const sourceId = extractJadesSourceId(target.name);
     const baseInstruments = parseInstrumentLabels(target.instrument);
@@ -164,20 +220,52 @@ export function loadTargets(): TargetRecord[] {
     }
 
     const viRecord = viCatalogBySourceId.get(sourceId);
+    const withSpectrum = attachDiverSpectrumAsset(baseTarget, sourceId);
 
     return {
-      ...baseTarget,
-      status: baseTarget.status,
-      instrument: dedupe([...baseTarget.instruments, DIVER_GRATING_INSTRUMENT]).join(", "),
-      instruments: dedupe([...baseTarget.instruments, DIVER_GRATING_INSTRUMENT]),
+      ...withSpectrum,
+      status: withSpectrum.status,
+      instrument: dedupe([...withSpectrum.instruments, DIVER_GRATING_INSTRUMENT]).join(", "),
+      instruments: dedupe([...withSpectrum.instruments, DIVER_GRATING_INSTRUMENT]),
       observation_modes: mergeObservationMode(
-        baseTarget.observation_modes,
+        withSpectrum.observation_modes,
         { instrument: DIVER_GRATING_INSTRUMENT, status: "observed" },
         true
       ),
       emission_line_tags: viRecord?.emissionLineTags ?? []
     };
   });
+
+  const knownSourceIds = new Set(
+    targets
+      .map((target) => extractJadesSourceId(target.name))
+      .filter((value): value is string => value !== null)
+  );
+
+  for (const [sourceId, viRecord] of viCatalogBySourceId.entries()) {
+    if (knownSourceIds.has(sourceId)) {
+      continue;
+    }
+
+    targets.push({
+      emerald_id: `DIV-${sourceId}`,
+      name: `JADES-${sourceId}`,
+      ra: 0,
+      dec: 0,
+      z_spec: viRecord.redshift ?? 1,
+      status: "observed",
+      instrument: DIVER_GRATING_INSTRUMENT,
+      priority: "low",
+      jwst_program_id: "8018",
+      notes: `${viRecord.notes} | Coordinates pending`,
+      ancillary_assets: [buildDiverSpectrumAsset(sourceId)],
+      instruments: [DIVER_GRATING_INSTRUMENT],
+      observation_modes: [{ instrument: DIVER_GRATING_INSTRUMENT, status: "observed" }],
+      emission_line_tags: viRecord.emissionLineTags
+    });
+  }
+
+  return targets;
 }
 
 export function loadCoiMembers(): CoiMember[] {

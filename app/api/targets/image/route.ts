@@ -8,7 +8,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const file = url.searchParams.get("file") ?? "";
 
-  if (!/^[-a-zA-Z0-9_.]+\.(jpg|jpeg|png)$/i.test(file)) {
+  if (!/^[-a-zA-Z0-9_./]+\.(jpg|jpeg|png)$/i.test(file)) {
+    return NextResponse.json({ error: "Invalid file parameter" }, { status: 400 });
+  }
+
+  if (file.startsWith("/") || file.includes("..") || file.includes("\\")) {
     return NextResponse.json({ error: "Invalid file parameter" }, { status: 400 });
   }
 

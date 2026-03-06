@@ -116,7 +116,7 @@ export default async function TargetDetailPage({
                         Preview
                       </a>
                     </p>
-                    {asset.asset_type === "image" ? (
+                    {asset.asset_type === "image" || asset.asset_type === "spectrum" ? (
                       <Image
                         src={withBasePathForApiUrl(asset.preview_url)}
                         alt={`${target.emerald_id} ${asset.label}`}

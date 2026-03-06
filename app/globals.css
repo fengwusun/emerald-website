@@ -243,6 +243,10 @@ th button {
   z-index: 30;
 }
 
+.hover-preview--spectrum {
+  width: 630px;
+}
+
 .hover-preview img {
   width: 100%;
   height: auto;
