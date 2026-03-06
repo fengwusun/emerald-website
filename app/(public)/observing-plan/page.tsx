@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   fetchProgramVisitStatus,
   type VisitStatusRow
@@ -194,6 +195,25 @@ export default async function ObservingPlanPage() {
           <li>On-source time per mask: 8403.2 s (about 2.33 hours)</li>
           <li>Total on-source time: 11.7 hours</li>
         </ul>
+
+        <h3>DIVER Pointing Footprints</h3>
+        <p className="muted" style={{ marginTop: "0.25rem" }}>
+          Footprint visualization of DIVER pointings in GOODS-N.
+        </p>
+        <Image
+          src="/figures/diver_FOV.png"
+          alt="DIVER pointing footprints in GOODS-N"
+          width={1280}
+          height={507}
+          unoptimized
+          style={{
+            width: "100%",
+            maxWidth: "100%",
+            height: "auto",
+            borderRadius: "10px",
+            border: "1px solid #cbe6de"
+          }}
+        />
       </section>
 
       <section className="card">
