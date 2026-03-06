@@ -1,179 +1,224 @@
 - name: Fengwu Sun
   role: Principal Investigator
   affiliation: Harvard University
+  email: "fengwu.sun@cfa.harvard.edu"
 
 - name: Xiaojing Lin
   role: Co-Principal Investigator
   affiliation: Tsinghua University
+  email: "linxj21@mails.tsinghua.edu.cn"
 
 - name: Santiago Arribas
   role: Co-Investigator
   affiliation: Consejo Superior de Investigaciones Cientificas
+  email: "arribas@cab.inta-csic.es"
 
 - name: Rachana Bhatawdekar
   role: Co-Investigator
   affiliation: ESA, European Space Astronomy Centre
+  email: "rachanab@gmail.com"
 
 - name: Andrew Bunker
   role: Co-Investigator
   affiliation: University of Oxford
+  email: "andy.bunker@physics.ox.ac.uk"
 
 - name: Sijia Cai
   role: Co-Investigator
   affiliation: Tsinghua University
+  email: "caisj23@mails.tsinghua.edu.cn"
 
 - name: Zheng Cai
   role: Co-Investigator
   affiliation: Tsinghua University
+  email: "zcai@tsinghua.edu.cn"
 
 - name: Stefano Carniani
   role: Co-Investigator
   affiliation: Scuola Normale Superiore, Pisa
+  email: "stefano.carniani@sns.it"
 
 - name: Stephane Charlot
   role: Co-Investigator
   affiliation: CNRS, Institut d'Astrophysique de Paris
+  email: "charlot@iap.fr"
 
 - name: Jacopo Chevallard
   role: Co-Investigator
   affiliation: CNRS, Institut d'Astrophysique de Paris
+  email: "jacopo.chevallard@iap.fr"
 
 - name: Mirko Curti
   role: Co-Investigator
   affiliation: INAF - Astrophysics and Space Science Observatory
+  email: "mirko.curti@eso.org"
 
 - name: Emma Curtis-Lake
   role: Co-Investigator
   affiliation: University of Hertfordshire
+  email: "e.curtis-lake@herts.ac.uk"
 
 - name: Lola Danhaive
   role: Co-Investigator
   affiliation: University of Cambridge
+  email: "angelicalola.danhaive@gmail.com"
 
 - name: Eiichi Egami
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "egami@arizona.edu"
 
 - name: Daniel J. Eisenstein
   role: Co-Investigator
   affiliation: Harvard University
+  email: "deisenstein@cfa.harvard.edu"
 
 - name: Xiaohui Fan
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "xfan@arizona.edu"
 
 - name: Yoshinobu Fudamoto
   role: Co-Investigator
   affiliation: Chiba University
+  email: "yoshinobu.fudamoto@gmail.com"
 
 - name: Kevin Hainline
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "kevinhainline@arizona.edu"
 
 - name: Jakob Helton
   role: Co-Investigator
   affiliation: The Pennsylvania State University
+  email: "jakobhelton@arizona.edu"
 
 - name: Ryota Ikeda
   role: Co-Investigator
   affiliation: National Astronomical Observatory of Japan (NAOJ)
+  email: "ryota.ikeda@grad.nao.ac.jp"
 
 - name: Zhiyuan Ji
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "zhiyuanji@arizona.edu"
 
 - name: Xiangyu Jin
   role: Co-Investigator
   affiliation: University of Michigan
+  email: "xiangyujin@arizona.edu"
 
 - name: Nimisha Kumari
   role: Co-Investigator
   affiliation: Space Telescope Science Institute - ESA - JWST
+  email: "kumari@stsci.edu"
 
 - name: Isaac Laseter
   role: Co-Investigator
   affiliation: University of Wisconsin - Madison
+  email: "laseter@wisc.edu"
 
 - name: Weizhe Liu
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "oscarlwz@gmail.com"
 
 - name: Jianwei Lyu
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "jianwei@arizona.edu"
 
 - name: Roberto Maiolino
   role: Co-Investigator
   affiliation: University of Cambridge
+  email: "rm665@cam.ac.uk"
 
 - name: Maria Pudoka
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "pudoka@arizona.edu"
 
 - name: Marcia J. Rieke
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "mrieke@gmail.com"
 
 - name: Pierluigi Rinaldi
   role: Co-Investigator
   affiliation: Space Telescope Science Institute
+  email: "prinaldi@arizona.edu"
 
 - name: Brant Robertson
   role: Co-Investigator
   affiliation: University of California - Santa Cruz
+  email: "brant@ucsc.edu"
 
 - name: Jan Scholtz
   role: Co-Investigator
   affiliation: University of Cambridge, Kavli Institute for Cosmology
+  email: "honzascholtz@gmail.com"
 
 - name: Sandro Tacchella
   role: Co-Investigator
   affiliation: University of Cambridge
+  email: "st578@cam.ac.uk"
 
 - name: James Trussler
   role: Co-Investigator
   affiliation: Harvard University
+  email: "james.trussler@cfa.harvard.edu"
 
 - name: Hannah Uebler
   role: Co-Investigator
   affiliation: Max Planck Institute for Extraterrestrial Physics
+  email: "hannah@mpe.mpg.de"
 
 - name: Feige Wang
   role: Co-Investigator
   affiliation: University of Michigan
+  email: "fgwang@umich.edu"
 
 - name: Xiaohan Wang
   role: Co-Investigator
   affiliation: Tsinghua University
+  email: "xiaohanw78@gmail.com"
 
 - name: Christopher N. A. Willmer
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "cnaw@arizona.edu"
 
 - name: Chris J. Willott
   role: Co-Investigator
   affiliation: NRC Herzberg Institute of Astrophysics
+  email: "chriswillott1@gmail.com"
 
 - name: Joris Witstok
   role: Co-Investigator
   affiliation: Cosmic Dawn Center, Niels Bohr Institute
+  email: "joriswitstok@gmail.com"
 
 - name: Yunjing Wu
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "yunjing.wu@ipmu.jp"
 
 - name: Zihao Wu
   role: Co-Investigator
   affiliation: Harvard University
+  email: "zihao.wu@cfa.harvard.edu"
 
 - name: Haowen Zhang
   role: Co-Investigator
   affiliation: Canadian Institute for Theoretical Astrophysics
+  email: "hwzhang0595@arizona.edu"
 
 - name: Junyu Zhang
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "junyuzhang@arizona.edu"
 
 - name: Yongda Zhu
   role: Co-Investigator
   affiliation: University of Arizona
+  email: "ydzhuastro@gmail.com"
