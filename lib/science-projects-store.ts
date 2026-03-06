@@ -1,5 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+  clearGoogleSheetRanges,
+  getScienceProjectsGoogleSheetsRanges,
+  isScienceProjectsGoogleSheetsConfigured,
+  readGoogleSheetValues,
+  updateGoogleSheetValues
+} from "@/lib/google-sheets";
 
 export type StoredProjectPerson = {
   name: string;
@@ -31,6 +38,18 @@ export type StoredScienceProjectsState = {
 };
 
 const STORE_PATH = path.join(process.cwd(), "data", "science-projects-state.json");
+const PROJECTS_HEADER = [
+  "id",
+  "title",
+  "abstract",
+  "announced",
+  "submitter_name",
+  "submitter_email",
+  "submitter_update_link",
+  "submitter_update_date",
+  "joiners_json"
+] as const;
+const CONTENT_HEADER = ["key", "value"] as const;
 
 export const DEFAULT_SCIENCE_PROJECTS_CONTENT: StoredPageContent = {
   heroTitle: "Science Projects",
@@ -162,7 +181,147 @@ function defaultState(): StoredScienceProjectsState {
   };
 }
 
+function parseBoolean(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
+function parseProjectsRows(rows: string[][]): StoredScienceProject[] {
+  const dataRows =
+    rows.length > 0 && rows[0].join("|") === PROJECTS_HEADER.join("|") ? rows.slice(1) : rows;
+
+  return dataRows
+    .map((row) => {
+      const [
+        id = "",
+        title = "",
+        abstract = "",
+        announced = "",
+        submitterName = "",
+        submitterEmail = "",
+        submitterUpdateLink = "",
+        submitterUpdateDate = "",
+        joinersJson = "[]"
+      ] = row;
+
+      let joiners: StoredProjectPerson[] = [];
+      try {
+        const parsed = JSON.parse(joinersJson);
+        if (Array.isArray(parsed)) {
+          joiners = parsed
+            .map((person) => parsePerson(person))
+            .filter((person): person is StoredProjectPerson => person !== null);
+        }
+      } catch {
+        joiners = [];
+      }
+
+      const submitter =
+        submitterName && submitterEmail
+          ? parsePerson({
+              name: submitterName,
+              email: submitterEmail,
+              updateLink: submitterUpdateLink,
+              updateDate: submitterUpdateDate
+            })
+          : null;
+
+      return parseProject({
+        id,
+        title,
+        abstract,
+        announced: parseBoolean(announced),
+        submitter,
+        joiners
+      });
+    })
+    .filter((project): project is StoredScienceProject => project !== null);
+}
+
+function serializeProjectsRows(projects: StoredScienceProject[]): string[][] {
+  return [
+    [...PROJECTS_HEADER],
+    ...projects.map((project) => [
+      project.id,
+      project.title,
+      project.abstract,
+      String(project.announced),
+      project.submitter?.name ?? "",
+      project.submitter?.email ?? "",
+      project.submitter?.updateLink ?? "",
+      project.submitter?.updateDate ?? "",
+      JSON.stringify(project.joiners)
+    ])
+  ];
+}
+
+function parseContentRows(rows: string[][]): StoredPageContent {
+  const dataRows =
+    rows.length > 0 && rows[0].join("|") === CONTENT_HEADER.join("|") ? rows.slice(1) : rows;
+
+  const record: Record<string, string> = {};
+  for (const [key = "", value = ""] of dataRows) {
+    if (!key) continue;
+    record[key] = value;
+  }
+
+  return parseContent(record);
+}
+
+function serializeContentRows(content: StoredPageContent): string[][] {
+  return [
+    [...CONTENT_HEADER],
+    ["heroTitle", content.heroTitle],
+    ["heroIntro", content.heroIntro],
+    ["announcedHeading", content.announcedHeading],
+    ["submitHeading", content.submitHeading],
+    ["submittedHeading", content.submittedHeading]
+  ];
+}
+
+async function readScienceProjectsStateFromGoogleSheets(): Promise<StoredScienceProjectsState> {
+  const ranges = getScienceProjectsGoogleSheetsRanges();
+  if (!ranges) {
+    throw new Error("Google Sheets storage is not configured.");
+  }
+
+  const [projectRows, contentRows] = await Promise.all([
+    readGoogleSheetValues(ranges.projectsRange),
+    readGoogleSheetValues(ranges.contentRange)
+  ]);
+
+  const projects = parseProjectsRows(projectRows);
+  const content = parseContentRows(contentRows);
+
+  if (projects.length === 0 && contentRows.length === 0) {
+    return defaultState();
+  }
+
+  return { projects, content };
+}
+
+async function writeScienceProjectsStateToGoogleSheets(
+  normalized: StoredScienceProjectsState
+): Promise<StoredScienceProjectsState> {
+  const ranges = getScienceProjectsGoogleSheetsRanges();
+  if (!ranges) {
+    throw new Error("Google Sheets storage is not configured.");
+  }
+
+  await clearGoogleSheetRanges([ranges.projectsRange, ranges.contentRange]);
+  await Promise.all([
+    updateGoogleSheetValues(ranges.projectsRange, serializeProjectsRows(normalized.projects)),
+    updateGoogleSheetValues(ranges.contentRange, serializeContentRows(normalized.content))
+  ]);
+
+  return normalized;
+}
+
 export async function readScienceProjectsState(): Promise<StoredScienceProjectsState> {
+  if (isScienceProjectsGoogleSheetsConfigured()) {
+    return readScienceProjectsStateFromGoogleSheets();
+  }
+
   try {
     const raw = await fs.readFile(STORE_PATH, "utf-8");
     const parsed = JSON.parse(raw);
@@ -197,6 +356,10 @@ export async function writeScienceProjectsState(payload: {
       .filter((project): project is StoredScienceProject => project !== null),
     content: parseContent(payload.content)
   };
+
+  if (isScienceProjectsGoogleSheetsConfigured()) {
+    return writeScienceProjectsStateToGoogleSheets(normalized);
+  }
 
   await fs.mkdir(path.dirname(STORE_PATH), { recursive: true });
 

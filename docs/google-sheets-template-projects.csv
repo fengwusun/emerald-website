@@ -1,0 +1,5 @@
+id,title,abstract,announced,submitter_name,submitter_email,submitter_update_link,submitter_update_date,joiners_json
+agn-incidence-z4-9,AGN Incidence Across z = 4-9,Measure AGN incidence in the EMERALD+DIVER galaxy sample using rest-optical diagnostics and broad-line indicators.,true,,,,"","[]"
+line-ratio-evolution,Emission-Line Ratio Evolution,Track how key emission-line ratios evolve with redshift and connect ionization conditions to host-galaxy properties.,true,,,,"","[]"
+host-nucleus-connection,Host Galaxy and Nuclear Activity Connection,Link AGN signatures with stellar mass growth star-formation activity and morphology in deep legacy fields.,true,,,,"","[]"
+submitted-example,Example Submitted Project,Example abstract for a newly submitted science project that is pending administrator announcement.,false,Example User,example.user@westlake.edu.cn,https://example.com/update,2026-03-06T00:00:00.000Z,"[{""name"":""Example Joiner"",""email"":""example.joiner@westlake.edu.cn"",""updateLink"":""https://example.com/joiner-update"",""updateDate"":""2026-03-06T00:00:00.000Z""}]"

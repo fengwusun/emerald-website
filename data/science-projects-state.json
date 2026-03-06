@@ -24,6 +24,12 @@
           "email": "zcai@tsinghua.edu.cn",
           "updateLink": "",
           "updateDate": ""
+        },
+        {
+          "name": "Xiaohui Fan",
+          "email": "xfan@arizona.edu",
+          "updateLink": "",
+          "updateDate": ""
         }
       ]
     },
@@ -37,6 +43,12 @@
         {
           "name": "Lola Danhaive",
           "email": "angelicalola.danhaive@gmail.com",
+          "updateLink": "",
+          "updateDate": ""
+        },
+        {
+          "name": "Xiaohui Fan",
+          "email": "xfan@arizona.edu",
           "updateLink": "",
           "updateDate": ""
         }
@@ -65,6 +77,26 @@
       "submitter": {
         "name": "Zheng Cai",
         "email": "zcai@tsinghua.edu.cn",
+        "updateLink": "",
+        "updateDate": ""
+      },
+      "joiners": [
+        {
+          "name": "Xiaohui Fan",
+          "email": "xfan@arizona.edu",
+          "updateLink": "",
+          "updateDate": ""
+        }
+      ]
+    },
+    {
+      "id": "submitted-1772810064899-abagd4",
+      "title": "The UV lines of AGNs and LRDs at z>5",
+      "abstract": "UV line diagnostics of AGNs and LRDs in DIVER and EMERALD",
+      "announced": true,
+      "submitter": {
+        "name": "Xiaojing Lin",
+        "email": "linxj21@mails.tsinghua.edu.cn",
         "updateLink": "",
         "updateDate": ""
       },
