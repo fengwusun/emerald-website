@@ -1,0 +1,101 @@
+import Link from "next/link";
+import Image from "next/image";
+import { notFound } from "next/navigation";
+import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
+import { getTargetById } from "@/lib/data";
+
+export default async function TargetDetailPage({
+  params
+}: {
+  params: Promise<{ emerald_id: string }>;
+}) {
+  const { emerald_id } = await params;
+  const target = getTargetById(emerald_id);
+
+  if (!target) {
+    notFound();
+  }
+
+  return (
+    <div className="grid">
+      <p>
+        <Link href="/portal/targets">← Back to catalog</Link>
+      </p>
+      <h1>{target.name}</h1>
+      <p className="muted">{target.emerald_id}</p>
+      <section className="card">
+        <p>
+          <strong>Name:</strong> {target.name}
+        </p>
+        <p>
+          <strong>Coordinates:</strong> RA {target.ra} | Dec {target.dec}
+        </p>
+        <p>
+          <strong>z_spec:</strong> {Math.abs(target.z_spec - 1) < 1e-9 ? -1 : target.z_spec}
+        </p>
+        <p>
+          <strong>JADES FitsMap:</strong>{" "}
+          <a
+            href={`https://jades.idies.jhu.edu/goods-n/?ra=${target.ra}&dec=${target.dec}&zoom=11`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open source in GOODS-N FitsMap
+          </a>
+        </p>
+        <p>
+          <strong>Status / Priority:</strong> {target.status} / {target.priority}
+        </p>
+        <p>
+          <strong>JWST Program:</strong> {target.jwst_program_id}
+        </p>
+        <p>
+          <strong>Notes:</strong> {target.notes || "None"}
+        </p>
+      </section>
+
+      <section className="card">
+        <h2>Ancillary Assets</h2>
+        {target.ancillary_assets.length === 0 ? (
+          <p className="muted">No ancillary assets registered for this target.</p>
+        ) : (
+          <div className="grid">
+            {target.ancillary_assets.map((asset) => (
+              <article key={`${asset.asset_type}-${asset.storage_key}`} className="card">
+                <p>
+                  <span className="tag">{asset.asset_type}</span> {asset.label}
+                </p>
+                <p className="muted">Storage key: {asset.storage_key}</p>
+                {asset.preview_url ? (
+                  <div className="grid">
+                    <p>
+                      <a href={withBasePathForApiUrl(asset.preview_url)} target="_blank" rel="noreferrer">
+                        Preview
+                      </a>
+                    </p>
+                    {asset.asset_type === "image" ? (
+                      <Image
+                        src={withBasePathForApiUrl(asset.preview_url)}
+                        alt={`${target.emerald_id} ${asset.label}`}
+                        width={520}
+                        height={520}
+                        unoptimized
+                        style={{ width: "100%", maxWidth: "520px", height: "auto", borderRadius: "8px", border: "1px solid #d8e0e3" }}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <form method="post" action={withBasePath("/api/portal/logout")}>
+        <button type="submit" className="secondary">
+          Sign out portal session
+        </button>
+      </form>
+    </div>
+  );
+}
