@@ -3,6 +3,7 @@ import {
   fetchProgramVisitStatus,
   type VisitStatusRow
 } from "@/lib/visit-status";
+import { withBasePath } from "@/lib/base-path";
 
 const FALLBACK_EMERALD_ROWS: VisitStatusRow[] = [
   {
@@ -201,7 +202,7 @@ export default async function ObservingPlanPage() {
           Footprint visualization of DIVER pointings in GOODS-N.
         </p>
         <Image
-          src="/figures/diver_FOV.png"
+          src={withBasePath("/figures/diver_FOV.png")}
           alt="DIVER pointing footprints in GOODS-N"
           width={1280}
           height={507}
