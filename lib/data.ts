@@ -3,10 +3,10 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { parse } from "csv-parse/sync";
 import { CoiMemberSchema, TargetRecordSchema, type CoiMember, type TargetRecord } from "@/lib/schemas";
+import { getMediaBaseDir } from "@/lib/media-path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const VI_CATALOG_PATH = path.join(DATA_DIR, "DIVER_grating_vi.csv");
-const DEFAULT_LOCAL_MEDIA_DIR = "/Users/sunfengwu/Downloads/emerald_msa_ptg-2026";
 const EMERALD_PROGRAM_ID = "7935";
 const EMERALD_INSTRUMENT = "G395M/F290LP";
 const DIVER_GRATING_INSTRUMENT = "G140M/F070LP";
@@ -197,11 +197,7 @@ function attachDiverSpectrumAsset(target: TargetRecord, sourceId: string): Targe
 }
 
 function localMediaBaseDir(): string {
-  return (
-    process.env.EMERALD_LOCAL_MEDIA_DIR ||
-    process.env.EMERALD_LOCAL_PDF_DIR ||
-    DEFAULT_LOCAL_MEDIA_DIR
-  );
+  return getMediaBaseDir();
 }
 
 function loadPrismAssetsBySourceId(): Map<string, PrismAssetRecord[]> {

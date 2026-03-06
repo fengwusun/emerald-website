@@ -35,6 +35,8 @@ export const config = {
     "/api/science-projects/:path*",
     "/portal/:path*",
     "/api/assets/sign",
-    "/api/targets/image"
+    "/api/targets/image",
+    "/api/targets/file",
+    "/api/spectra/1d"
   ]
 };

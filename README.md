@@ -49,6 +49,8 @@ Optional storage and media settings:
 - `EMERALD_LOCAL_MEDIA_DIR`
 - `NEXT_PUBLIC_BASE_PATH`
 
+If `EMERALD_LOCAL_MEDIA_DIR` is not set, production defaults to `/data/emerald/media`.
+
 `.env.local` should stay gitignored.
 
 ## Key Commands
@@ -79,6 +81,24 @@ npm run test
 - Instrument status is tracked per observation mode, not only once per source.
 - Emission-line tags are imported from the DIVER grating VI table, including `Continuum_detected`.
 - Quick tags are derived from notes and standardized for selected categories such as literature UV emitters, JADES-NIRSpec sources, and AGNs.
+- PRISM x1d FITS files can be viewed interactively in the target detail page after generating JSON cache files.
+
+### Build 1D Spectrum Cache (PRISM x1d)
+
+Interactive x1d plotting uses precomputed JSON cache files next to FITS files in:
+`<EMERALD_LOCAL_MEDIA_DIR>/diver_prism_plots/`.
+
+Run:
+
+```bash
+python3 scripts/build_prism_x1d_cache.py --media-dir /path/to/media
+```
+
+Example on server:
+
+```bash
+python3 scripts/build_prism_x1d_cache.py --media-dir /data/emerald/media
+```
 
 ## Science Projects
 

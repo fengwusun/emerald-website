@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
-
-const DEFAULT_LOCAL_MEDIA_DIR = "/Users/sunfengwu/Downloads/emerald_msa_ptg-2026";
+import { getMediaBaseDir } from "@/lib/media-path";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -16,10 +15,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid file parameter" }, { status: 400 });
   }
 
-  const baseDir =
-    process.env.EMERALD_LOCAL_MEDIA_DIR ||
-    process.env.EMERALD_LOCAL_PDF_DIR ||
-    DEFAULT_LOCAL_MEDIA_DIR;
+  const baseDir = getMediaBaseDir();
   const resolvedBase = path.resolve(baseDir);
   const absolutePath = path.resolve(resolvedBase, file);
 

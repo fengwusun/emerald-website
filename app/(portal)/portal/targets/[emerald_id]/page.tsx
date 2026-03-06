@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
+import { Spectrum1DViewer } from "@/components/spectrum-1d-viewer";
 
 function isImageAssetPath(pathname: string): boolean {
   return /\.(png|jpg|jpeg)(\?|$)/i.test(pathname);
@@ -40,6 +41,9 @@ export default async function TargetDetailPage({
     target.observation_modes.length > 0
       ? target.observation_modes
       : target.instruments.map((instrument) => ({ instrument, status: target.status }));
+  const prismX1dAssets = target.ancillary_assets
+    .filter((asset) => /_x1d\.fits$/i.test(asset.storage_key))
+    .map((asset) => ({ storageKey: asset.storage_key, label: asset.label }));
 
   return (
     <div className="grid">
@@ -151,6 +155,8 @@ export default async function TargetDetailPage({
           </div>
         )}
       </section>
+
+      {prismX1dAssets.length > 0 ? <Spectrum1DViewer assets={prismX1dAssets} /> : null}
 
       <form method="post" action={withBasePath("/api/portal/logout")}>
         <button type="submit" className="secondary">
