@@ -114,13 +114,31 @@ function firstImagePreview(target: TargetRecord): string | null {
   return null;
 }
 
-function firstSpectrumPreview(target: TargetRecord): string | null {
-  for (const asset of target.ancillary_assets) {
-    if (asset.asset_type === "spectrum" && asset.preview_url) {
-      return withBasePathForApiUrl(asset.preview_url);
+function spectrumPreviewForInstrument(target: TargetRecord, instrument: string): string | null {
+  const instrumentLower = instrument.toLowerCase();
+
+  const preferredSpectrum = target.ancillary_assets.find((asset) => {
+    if (asset.asset_type !== "spectrum" || !asset.preview_url) {
+      return false;
     }
+    const key = asset.storage_key.toLowerCase();
+    if (instrumentLower === "g140m/f070lp") {
+      return key.includes("diver_grating_plots/");
+    }
+    if (instrumentLower === "prism") {
+      return key.includes("diver_prism_plots/");
+    }
+    return false;
+  });
+
+  if (preferredSpectrum?.preview_url) {
+    return withBasePathForApiUrl(preferredSpectrum.preview_url);
   }
-  return null;
+
+  const fallback = target.ancillary_assets.find(
+    (asset) => asset.asset_type === "spectrum" && asset.preview_url
+  );
+  return fallback?.preview_url ? withBasePathForApiUrl(fallback.preview_url) : null;
 }
 
 function jadesNumericId(name: string): string | null {
@@ -669,7 +687,6 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
               const emissionTags = getEmissionLineTagsForTarget(target);
               const observationModes = observationModesForDisplay(target);
               const preview = firstImagePreview(target);
-              const spectrumPreview = firstSpectrumPreview(target);
               const jadesId = jadesNumericId(target.name);
               return (
                 <tr key={target.emerald_id}>
@@ -716,7 +733,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                     {observationModes.length > 0 ? (
                       <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
                         {observationModes.map((mode) => {
-                          const showSpectrum = mode.instrument.toLowerCase() === "g140m/f070lp" && spectrumPreview;
+                          const spectrumPreview = spectrumPreviewForInstrument(target, mode.instrument);
+                          const showSpectrum =
+                            (mode.instrument.toLowerCase() === "g140m/f070lp" ||
+                              mode.instrument.toLowerCase() === "prism") &&
+                            spectrumPreview;
                           if (showSpectrum) {
                             return (
                               <span

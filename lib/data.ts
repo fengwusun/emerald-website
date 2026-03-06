@@ -6,9 +6,12 @@ import { CoiMemberSchema, TargetRecordSchema, type CoiMember, type TargetRecord 
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const VI_CATALOG_PATH = path.join(DATA_DIR, "DIVER_grating_vi.csv");
+const DEFAULT_LOCAL_MEDIA_DIR = "/Users/sunfengwu/Downloads/emerald_msa_ptg-2026";
 const EMERALD_PROGRAM_ID = "7935";
 const EMERALD_INSTRUMENT = "G395M/F290LP";
 const DIVER_GRATING_INSTRUMENT = "G140M/F070LP";
+const DIVER_PRISM_INSTRUMENT = "PRISM";
+const DIVER_PRISM_PLOT_DIR = "diver_prism_plots";
 
 const EMISSION_TAG_COLUMNS: ReadonlyArray<{ column: string; tag: string }> = [
   { column: "LyA", tag: "LyA" },
@@ -30,6 +33,12 @@ type ViCatalogRecord = {
   redshift: number | null;
   notes: string;
   emissionLineTags: string[];
+};
+
+type PrismAssetRecord = {
+  sourceId: string;
+  observationNumber: string;
+  filename: string;
 };
 
 type ObservationMode = {
@@ -137,19 +146,76 @@ function buildDiverSpectrumAsset(sourceId: string) {
   };
 }
 
-function attachDiverSpectrumAsset(target: TargetRecord, sourceId: string): TargetRecord {
-  const nextAsset = buildDiverSpectrumAsset(sourceId);
-  const alreadyExists = target.ancillary_assets.some(
-    (asset) => asset.storage_key.toLowerCase() === nextAsset.storage_key.toLowerCase()
-  );
-  if (alreadyExists) {
+function buildPrismSpectrumAsset(record: PrismAssetRecord) {
+  return {
+    asset_type: "spectrum" as const,
+    label: `DIVER PRISM Spectrum (o${record.observationNumber})`,
+    storage_key: `${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    preview_url: `/api/targets/image?file=${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    access_level: "team" as const
+  };
+}
+
+function attachAssets(target: TargetRecord, nextAssets: ReturnType<typeof buildDiverSpectrumAsset>[]): TargetRecord {
+  if (nextAssets.length === 0) {
     return target;
   }
-
+  const existingKeys = new Set(target.ancillary_assets.map((asset) => asset.storage_key.toLowerCase()));
+  const filtered = nextAssets.filter((asset) => !existingKeys.has(asset.storage_key.toLowerCase()));
+  if (filtered.length === 0) {
+    return target;
+  }
   return {
     ...target,
-    ancillary_assets: [...target.ancillary_assets, nextAsset]
+    ancillary_assets: [...target.ancillary_assets, ...filtered]
   };
+}
+
+function attachDiverSpectrumAsset(target: TargetRecord, sourceId: string): TargetRecord {
+  return attachAssets(target, [buildDiverSpectrumAsset(sourceId)]);
+}
+
+function localMediaBaseDir(): string {
+  return (
+    process.env.EMERALD_LOCAL_MEDIA_DIR ||
+    process.env.EMERALD_LOCAL_PDF_DIR ||
+    DEFAULT_LOCAL_MEDIA_DIR
+  );
+}
+
+function loadPrismAssetsBySourceId(): Map<string, PrismAssetRecord[]> {
+  const prismDir = path.join(localMediaBaseDir(), DIVER_PRISM_PLOT_DIR);
+  if (!fs.existsSync(prismDir)) {
+    return new Map();
+  }
+
+  const files = fs.readdirSync(prismDir);
+  const bySourceId = new Map<string, PrismAssetRecord[]>();
+  const prismPattern = /^jw_o(\d+)_([0-9]+)_.*prism.*\.png$/i;
+
+  for (const filename of files) {
+    const match = filename.match(prismPattern);
+    if (!match) {
+      continue;
+    }
+    const record: PrismAssetRecord = {
+      observationNumber: match[1],
+      sourceId: match[2],
+      filename
+    };
+    const existing = bySourceId.get(record.sourceId) ?? [];
+    existing.push(record);
+    bySourceId.set(record.sourceId, existing);
+  }
+
+  for (const [sourceId, records] of bySourceId.entries()) {
+    bySourceId.set(
+      sourceId,
+      records.sort((a, b) => a.filename.localeCompare(b.filename))
+    );
+  }
+
+  return bySourceId;
 }
 
 function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
@@ -187,6 +253,7 @@ export function loadTargets(): TargetRecord[] {
   const csvPath = path.join(DATA_DIR, "targets.csv");
   const csvRaw = fs.readFileSync(csvPath, "utf8");
   const viCatalogBySourceId = loadViCatalogBySourceId();
+  const prismAssetsBySourceId = loadPrismAssetsBySourceId();
 
   const records = parse(csvRaw, {
     columns: true,
@@ -215,12 +282,33 @@ export function loadTargets(): TargetRecord[] {
       observation_modes: baseObservationModes
     };
 
-    if (!sourceId || !viCatalogBySourceId.has(sourceId)) {
+    if (!sourceId) {
       return baseTarget;
     }
 
     const viRecord = viCatalogBySourceId.get(sourceId);
-    const withSpectrum = attachDiverSpectrumAsset(baseTarget, sourceId);
+    const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
+    const prismAssets = prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord));
+    let merged = attachAssets(baseTarget, prismAssets);
+
+    if (prismAssets.length > 0) {
+      merged = {
+        ...merged,
+        instrument: dedupe([...merged.instruments, DIVER_PRISM_INSTRUMENT]).join(", "),
+        instruments: dedupe([...merged.instruments, DIVER_PRISM_INSTRUMENT]),
+        observation_modes: mergeObservationMode(
+          merged.observation_modes,
+          { instrument: DIVER_PRISM_INSTRUMENT, status: "observed" },
+          true
+        )
+      };
+    }
+
+    if (!viRecord) {
+      return merged;
+    }
+
+    const withSpectrum = attachDiverSpectrumAsset(merged, sourceId);
 
     return {
       ...withSpectrum,
@@ -242,26 +330,49 @@ export function loadTargets(): TargetRecord[] {
       .filter((value): value is string => value !== null)
   );
 
-  for (const [sourceId, viRecord] of viCatalogBySourceId.entries()) {
+  const allCatalogSourceIds = new Set<string>([
+    ...viCatalogBySourceId.keys(),
+    ...prismAssetsBySourceId.keys()
+  ]);
+
+  for (const sourceId of allCatalogSourceIds) {
     if (knownSourceIds.has(sourceId)) {
       continue;
     }
+
+    const viRecord = viCatalogBySourceId.get(sourceId);
+    const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
+    const hasGrating = viRecord !== undefined;
+    const hasPrism = prismRecords.length > 0;
+    const instruments = dedupe([
+      ...(hasGrating ? [DIVER_GRATING_INSTRUMENT] : []),
+      ...(hasPrism ? [DIVER_PRISM_INSTRUMENT] : [])
+    ]);
+    const ancillaryAssets = [
+      ...(hasGrating ? [buildDiverSpectrumAsset(sourceId)] : []),
+      ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord))
+    ];
+    const noteParts = [
+      viRecord?.notes ?? "",
+      hasPrism ? "DIVER PRISM source" : "",
+      "Coordinates pending"
+    ].filter((part) => part.length > 0);
 
     targets.push({
       emerald_id: `DIV-${sourceId}`,
       name: `JADES-${sourceId}`,
       ra: 0,
       dec: 0,
-      z_spec: viRecord.redshift ?? 1,
+      z_spec: viRecord?.redshift ?? 1,
       status: "observed",
-      instrument: DIVER_GRATING_INSTRUMENT,
+      instrument: instruments.join(", "),
       priority: "low",
       jwst_program_id: "8018",
-      notes: `${viRecord.notes} | Coordinates pending`,
-      ancillary_assets: [buildDiverSpectrumAsset(sourceId)],
-      instruments: [DIVER_GRATING_INSTRUMENT],
-      observation_modes: [{ instrument: DIVER_GRATING_INSTRUMENT, status: "observed" }],
-      emission_line_tags: viRecord.emissionLineTags
+      notes: noteParts.join(" | "),
+      ancillary_assets: ancillaryAssets,
+      instruments,
+      observation_modes: instruments.map((instrument) => ({ instrument, status: "observed" })),
+      emission_line_tags: viRecord?.emissionLineTags ?? []
     });
   }
 
