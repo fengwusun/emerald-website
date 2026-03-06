@@ -300,9 +300,9 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
         const layout = {
           title: {
             text: `${selectedAssetLabel || "PRISM x1d"} (JADES-${currentPayload.meta.source_id})`,
-            y: 0.99
+            y: 0.975
           },
-          margin: { t: 94, r: 18, b: 52, l: 72 },
+          margin: { t: 86, r: 18, b: 52, l: 72 },
           paper_bgcolor: "#ffffff",
           plot_bgcolor: "#fbfffd",
           xaxis: {
@@ -315,7 +315,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
             gridcolor: "#d8ece6",
             zeroline: false
           },
-          legend: { orientation: "h", y: 1.01, x: 0 },
+          legend: { orientation: "h", y: 1.03, x: 0 },
           shapes: lineShapes,
           annotations: lineAnnotations
         };
