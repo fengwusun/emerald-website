@@ -110,10 +110,6 @@ function matchesAllSelectedTags(targetTags: string[], selectedTags: string[]): b
   );
 }
 
-function toRadians(value: number): number {
-  return (value * Math.PI) / 180;
-}
-
 function normalizedZSpec(value: number): number {
   return Math.abs(value - 1) < 1e-9 || Math.abs(value) < 1e-9 ? -1 : value;
 }
@@ -123,21 +119,19 @@ function formatZSpec(value: number): string {
   return normalized === -1 ? "-1" : normalized.toFixed(2);
 }
 
-function angularSeparationArcsec(raDeg1: number, decDeg1: number, raDeg2: number, decDeg2: number): number {
-  const ra1 = toRadians(raDeg1);
-  const dec1 = toRadians(decDeg1);
-  const ra2 = toRadians(raDeg2);
-  const dec2 = toRadians(decDeg2);
+function normalizedRaDeltaDeg(delta: number): number {
+  let wrapped = delta;
+  while (wrapped > 180) wrapped -= 360;
+  while (wrapped < -180) wrapped += 360;
+  return wrapped;
+}
 
-  const sinD1 = Math.sin(dec1);
-  const sinD2 = Math.sin(dec2);
-  const cosD1 = Math.cos(dec1);
-  const cosD2 = Math.cos(dec2);
-  const cosDeltaRa = Math.cos(ra1 - ra2);
-
-  const cosAngle = Math.min(1, Math.max(-1, sinD1 * sinD2 + cosD1 * cosD2 * cosDeltaRa));
-  const angleRad = Math.acos(cosAngle);
-  return (angleRad * 180 * 3600) / Math.PI;
+function coneMetricSeparationArcsec(ra0Deg: number, dec0Deg: number, raDeg: number, decDeg: number): number {
+  const deltaRaDeg = normalizedRaDeltaDeg(raDeg - ra0Deg);
+  const deltaDecDeg = decDeg - dec0Deg;
+  const cosDec0 = Math.cos((dec0Deg * Math.PI) / 180);
+  const distanceDeg = Math.sqrt((deltaRaDeg * cosDec0) ** 2 + deltaDecDeg ** 2);
+  return distanceDeg * 3600;
 }
 
 function firstImagePreview(target: TargetRecord): string | null {
@@ -308,39 +302,6 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     const selectedInstruments = parseSelectedTags(appliedFilters.instrumentQuery);
     const zMinNum = appliedFilters.zMin.trim() === "" ? null : Number(appliedFilters.zMin);
     const zMaxNum = appliedFilters.zMax.trim() === "" ? null : Number(appliedFilters.zMax);
-
-    let rows = targets.filter((target) => {
-      const quickTags = getQuickTagsForTarget(target);
-      const emissionTags = getEmissionLineTagsForTarget(target);
-      const observationModes = observationModesForDisplay(target);
-      const relevantModes =
-        selectedInstruments.length > 0
-          ? observationModes.filter((mode) =>
-              selectedInstruments.some(
-                (selectedInstrument) => selectedInstrument.toLowerCase() === mode.instrument.toLowerCase()
-              )
-            )
-          : observationModes;
-      if (appliedFilters.status !== "all" && !relevantModes.some((mode) => mode.status === appliedFilters.status)) {
-        return false;
-      }
-      if (!matchesAllSelectedTags(target.instruments, selectedInstruments)) return false;
-      if (appliedFilters.priority !== "all" && target.priority !== appliedFilters.priority) return false;
-      if (zMinNum !== null && Number.isFinite(zMinNum) && normalizedZSpec(target.z_spec) < zMinNum) return false;
-      if (zMaxNum !== null && Number.isFinite(zMaxNum) && normalizedZSpec(target.z_spec) > zMaxNum) return false;
-      if (!matchesAllSelectedTags(quickTags, selectedQuickTags)) return false;
-      if (!matchesAllSelectedTags(emissionTags, selectedEmissionTags)) return false;
-      if (!q) return true;
-      return (
-        target.emerald_id.toLowerCase().includes(q) ||
-        target.name.toLowerCase().includes(q) ||
-        target.instrument.toLowerCase().includes(q) ||
-        target.notes.toLowerCase().includes(q) ||
-        quickTags.some((tag) => tag.toLowerCase().includes(q)) ||
-        emissionTags.some((tag) => tag.toLowerCase().includes(q))
-      );
-    });
-
     const hasConeRa = appliedFilters.coneRa.trim() !== "";
     const hasConeDec = appliedFilters.coneDec.trim() !== "";
     const raNum = Number(appliedFilters.coneRa);
@@ -354,12 +315,14 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
       Number.isFinite(radiusNum) &&
       radiusNum > 0;
 
+    let rows: TargetRecord[];
+
     if (coneEnabled) {
       let best: TargetRecord | null = null;
       let bestSep = Number.POSITIVE_INFINITY;
 
-      for (const target of rows) {
-        const sep = angularSeparationArcsec(raNum, decNum, target.ra, target.dec);
+      for (const target of targets) {
+        const sep = coneMetricSeparationArcsec(raNum, decNum, target.ra, target.dec);
         if (sep < bestSep) {
           bestSep = sep;
           best = target;
@@ -371,6 +334,38 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
       } else {
         rows = [];
       }
+    } else {
+      rows = targets.filter((target) => {
+        const quickTags = getQuickTagsForTarget(target);
+        const emissionTags = getEmissionLineTagsForTarget(target);
+        const observationModes = observationModesForDisplay(target);
+        const relevantModes =
+          selectedInstruments.length > 0
+            ? observationModes.filter((mode) =>
+                selectedInstruments.some(
+                  (selectedInstrument) => selectedInstrument.toLowerCase() === mode.instrument.toLowerCase()
+                )
+              )
+            : observationModes;
+        if (appliedFilters.status !== "all" && !relevantModes.some((mode) => mode.status === appliedFilters.status)) {
+          return false;
+        }
+        if (!matchesAllSelectedTags(target.instruments, selectedInstruments)) return false;
+        if (appliedFilters.priority !== "all" && target.priority !== appliedFilters.priority) return false;
+        if (zMinNum !== null && Number.isFinite(zMinNum) && normalizedZSpec(target.z_spec) < zMinNum) return false;
+        if (zMaxNum !== null && Number.isFinite(zMaxNum) && normalizedZSpec(target.z_spec) > zMaxNum) return false;
+        if (!matchesAllSelectedTags(quickTags, selectedQuickTags)) return false;
+        if (!matchesAllSelectedTags(emissionTags, selectedEmissionTags)) return false;
+        if (!q) return true;
+        return (
+          target.emerald_id.toLowerCase().includes(q) ||
+          target.name.toLowerCase().includes(q) ||
+          target.instrument.toLowerCase().includes(q) ||
+          target.notes.toLowerCase().includes(q) ||
+          quickTags.some((tag) => tag.toLowerCase().includes(q)) ||
+          emissionTags.some((tag) => tag.toLowerCase().includes(q))
+        );
+      });
     }
 
     return rows.sort((a, b) => {
@@ -720,6 +715,9 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             placeholder="2"
           />
         </label>
+        <p className="muted" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
+          Cone search returns the single best-match target within the radius and overrides other filters.
+        </p>
       </section>
 
       <section className="card">
