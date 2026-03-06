@@ -18,6 +18,11 @@ export const AncillaryAssetSchema = z.object({
   access_level: z.enum(["team", "public"]).default("team")
 });
 
+export const ObservationModeSchema = z.object({
+  instrument: z.string().min(1),
+  status: z.string().min(1)
+});
+
 export const RawTargetRowSchema = z.object({
   emerald_id: z.string().min(1),
   name: z.string().min(1),
@@ -25,6 +30,7 @@ export const RawTargetRowSchema = z.object({
   dec: z.coerce.number(),
   z_spec: z.coerce.number().nonnegative(),
   status: z.string().min(1),
+  instrument: z.string().default(""),
   priority: z.enum(["high", "medium", "low"]),
   jwst_program_id: z.string().min(1),
   notes: z.string().default(""),
@@ -37,6 +43,8 @@ export const TargetRecordSchema = RawTargetRowSchema.transform((row, ctx) => {
     return {
       ...row,
       ancillary_assets: z.array(AncillaryAssetSchema).parse(parsedAssets),
+      instruments: [] as string[],
+      observation_modes: [] as Array<z.infer<typeof ObservationModeSchema>>,
       emission_line_tags: [] as string[]
     };
   } catch {

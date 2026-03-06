@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
-import { getQuickTagsForTarget } from "@/lib/target-tags";
+import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
 export default async function TargetDetailPage({
   params
@@ -20,6 +20,11 @@ export default async function TargetDetailPage({
   const jadesIdMatch = target.name.match(/^JADES-(\d+)$/);
   const jadesNumericId = jadesIdMatch ? jadesIdMatch[1] : null;
   const quickTags = getQuickTagsForTarget(target);
+  const emissionLineTags = getEmissionLineTagsForTarget(target);
+  const observationModes =
+    target.observation_modes.length > 0
+      ? target.observation_modes
+      : target.instruments.map((instrument) => ({ instrument, status: target.status }));
 
   return (
     <div className="grid">
@@ -62,9 +67,21 @@ export default async function TargetDetailPage({
             <span className="muted">Unavailable</span>
           )}
         </p>
-        <p>
-          <strong>Status / Priority:</strong> {target.status} / {target.priority}
-        </p>
+        <div>
+          <strong>Observation modes / Priority:</strong> {target.priority}
+          <div style={{ marginTop: "0.45rem", display: "grid", gap: "0.35rem" }}>
+            {observationModes.length > 0 ? (
+              observationModes.map((mode) => (
+                <div key={`${mode.instrument}-${mode.status}`} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <span className="tag">{mode.instrument}</span>
+                  <span className="tag">{mode.status}</span>
+                </div>
+              ))
+            ) : (
+              <span className="muted">Not labeled</span>
+            )}
+          </div>
+        </div>
         <p>
           <strong>JWST Program:</strong> {target.jwst_program_id}
         </p>
@@ -76,7 +93,7 @@ export default async function TargetDetailPage({
         </p>
         <p>
           <strong>Emission line tags:</strong>{" "}
-          {target.emission_line_tags.length > 0 ? target.emission_line_tags.join(", ") : "None in VI table"}
+          {emissionLineTags.length > 0 ? emissionLineTags.join(", ") : "None in VI table"}
         </p>
       </section>
 

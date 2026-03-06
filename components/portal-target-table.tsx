@@ -7,13 +7,14 @@ import { withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
-type SortField = "name" | "z_spec" | "status" | "priority" | "assets";
+type SortField = "name" | "z_spec" | "status" | "instrument" | "priority" | "assets";
 
 type FilterState = {
   query: string;
   quickTagQuery: string;
   emissionTagQuery: string;
   status: string;
+  instrumentQuery: string;
   priority: string;
   zMin: string;
   zMax: string;
@@ -27,6 +28,7 @@ const DEFAULT_FILTERS: FilterState = {
   quickTagQuery: "",
   emissionTagQuery: "",
   status: "all",
+  instrumentQuery: "",
   priority: "all",
   zMin: "",
   zMax: "",
@@ -35,10 +37,13 @@ const DEFAULT_FILTERS: FilterState = {
   coneRadiusArcsec: "2"
 };
 
+const INSTRUMENT_OPTIONS = ["G140M/F070LP", "PRISM", "G395M/F290LP"] as const;
+const MULTI_VALUE_DELIMITER = "\n";
+
 function parseSelectedTags(value: string): string[] {
   const seen = new Set<string>();
   return value
-    .split(",")
+    .split(MULTI_VALUE_DELIMITER)
     .map((item) => item.trim())
     .filter((item) => item.length > 0)
     .filter((item) => {
@@ -57,7 +62,7 @@ function toggleTagValue(currentValue: string, tag: string): string {
   const nextSelected = selected.some((item) => item.toLowerCase() === tagLower)
     ? selected.filter((item) => item.toLowerCase() !== tagLower)
     : [...selected, tag];
-  return nextSelected.join(", ");
+  return nextSelected.join(MULTI_VALUE_DELIMITER);
 }
 
 function matchesAllSelectedTags(targetTags: string[], selectedTags: string[]): boolean {
@@ -114,6 +119,66 @@ function jadesNumericId(name: string): string | null {
   return match ? match[1] : null;
 }
 
+function observationModesForDisplay(target: TargetRecord) {
+  return target.observation_modes.length > 0
+    ? target.observation_modes
+    : target.instruments.map((instrument) => ({ instrument, status: target.status }));
+}
+
+function ExpandableMultiSelect({
+  options,
+  selectedValues,
+  onChange,
+  placeholder
+}: {
+  options: readonly string[];
+  selectedValues: string[];
+  onChange: (nextValues: string[]) => void;
+  placeholder: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleRows = Math.min(Math.max(options.length, 4), 10);
+  const summaryLabel = selectedValues.length > 0 ? selectedValues.join(", ") : placeholder;
+
+  if (!expanded) {
+    return (
+      <select
+        value="__summary__"
+        onMouseDown={(event) => {
+          event.preventDefault();
+          setExpanded(true);
+        }}
+        onFocus={() => setExpanded(true)}
+      >
+        <option value="__summary__">{summaryLabel}</option>
+      </select>
+    );
+  }
+
+  return (
+    <select
+      multiple
+      value={selectedValues}
+      aria-label={placeholder}
+      autoFocus
+      onBlur={() => setExpanded(false)}
+      onChange={(event) => {
+        onChange(Array.from(event.target.selectedOptions, (option) => option.value));
+      }}
+      size={visibleRows}
+      style={{ minHeight: "10rem" }}
+    >
+      {options.map((option) => {
+        return (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        );
+      })}
+    </select>
+  );
+}
+
 export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   const [draftFilters, setDraftFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_FILTERS);
@@ -153,13 +218,26 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     const q = appliedFilters.query.trim().toLowerCase();
     const selectedQuickTags = parseSelectedTags(appliedFilters.quickTagQuery);
     const selectedEmissionTags = parseSelectedTags(appliedFilters.emissionTagQuery);
+    const selectedInstruments = parseSelectedTags(appliedFilters.instrumentQuery);
     const zMinNum = appliedFilters.zMin.trim() === "" ? null : Number(appliedFilters.zMin);
     const zMaxNum = appliedFilters.zMax.trim() === "" ? null : Number(appliedFilters.zMax);
 
     let rows = targets.filter((target) => {
       const quickTags = getQuickTagsForTarget(target);
       const emissionTags = getEmissionLineTagsForTarget(target);
-      if (appliedFilters.status !== "all" && target.status !== appliedFilters.status) return false;
+      const observationModes = observationModesForDisplay(target);
+      const relevantModes =
+        selectedInstruments.length > 0
+          ? observationModes.filter((mode) =>
+              selectedInstruments.some(
+                (selectedInstrument) => selectedInstrument.toLowerCase() === mode.instrument.toLowerCase()
+              )
+            )
+          : observationModes;
+      if (appliedFilters.status !== "all" && !relevantModes.some((mode) => mode.status === appliedFilters.status)) {
+        return false;
+      }
+      if (!matchesAllSelectedTags(target.instruments, selectedInstruments)) return false;
       if (appliedFilters.priority !== "all" && target.priority !== appliedFilters.priority) return false;
       if (zMinNum !== null && Number.isFinite(zMinNum) && normalizedZSpec(target.z_spec) < zMinNum) return false;
       if (zMaxNum !== null && Number.isFinite(zMaxNum) && normalizedZSpec(target.z_spec) > zMaxNum) return false;
@@ -169,6 +247,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
       return (
         target.emerald_id.toLowerCase().includes(q) ||
         target.name.toLowerCase().includes(q) ||
+        target.instrument.toLowerCase().includes(q) ||
         target.notes.toLowerCase().includes(q) ||
         quickTags.some((tag) => tag.toLowerCase().includes(q)) ||
         emissionTags.some((tag) => tag.toLowerCase().includes(q))
@@ -286,6 +365,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
 
   const selectedQuickTags = parseSelectedTags(appliedFilters.quickTagQuery);
   const selectedEmissionTags = parseSelectedTags(appliedFilters.emissionTagQuery);
+  const selectedInstruments = parseSelectedTags(appliedFilters.instrumentQuery);
 
   return (
     <div className="grid">
@@ -313,11 +393,14 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
         </label>
         <label>
           Emission line tag
-          <input
-            list="target-emission-tags"
-            value={draftFilters.emissionTagQuery}
-            onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, emissionTagQuery: event.target.value }));
+          <ExpandableMultiSelect
+            options={allEmissionTags}
+            selectedValues={parseSelectedTags(draftFilters.emissionTagQuery)}
+            onChange={(nextValues) => {
+              setDraftFilters((prev) => ({
+                ...prev,
+                emissionTagQuery: nextValues.join(MULTI_VALUE_DELIMITER)
+              }));
             }}
             placeholder="Select one or more"
           />
@@ -335,6 +418,20 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             <option value="observed">Observed</option>
             <option value="processed">Processed</option>
           </select>
+        </label>
+        <label>
+          Instrument
+          <ExpandableMultiSelect
+            options={INSTRUMENT_OPTIONS}
+            selectedValues={parseSelectedTags(draftFilters.instrumentQuery)}
+            onChange={(nextValues) => {
+              setDraftFilters((prev) => ({
+                ...prev,
+                instrumentQuery: nextValues.join(MULTI_VALUE_DELIMITER)
+              }));
+            }}
+            placeholder="Select one or more"
+          />
         </label>
         <label>
           Priority
@@ -412,9 +509,6 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           <p className="muted" style={{ marginTop: 0 }}>
             Emission line tags
           </p>
-          {selectedEmissionTags.length > 0 ? (
-            <p className="muted">Selected: {selectedEmissionTags.join(", ")}</p>
-          ) : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
             {allEmissionTags.map((tag) => (
               <button
@@ -437,6 +531,38 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           </div>
         </section>
       ) : null}
+
+      <section className="card">
+        <p className="muted" style={{ marginTop: 0 }}>
+          Instruments
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+          {INSTRUMENT_OPTIONS.map((instrument) => (
+            <button
+              key={instrument}
+              type="button"
+              className="secondary"
+              onClick={() => {
+                const nextValue = toggleTagValue(appliedFilters.instrumentQuery, instrument);
+                setDraftFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                setAppliedFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                setPage(1);
+                setPageInput("1");
+              }}
+              style={{
+                padding: "0.22rem 0.52rem",
+                borderRadius: "999px",
+                background:
+                  selectedInstruments.some((item) => item.toLowerCase() === instrument.toLowerCase())
+                    ? "#d9f4ea"
+                    : undefined
+              }}
+            >
+              {instrument}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <section className="card grid grid-2">
         <label>
@@ -515,6 +641,9 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                 <button onClick={() => toggleSort("status")}>Status {sortGlyph("status")}</button>
               </th>
               <th>
+                <button onClick={() => toggleSort("instrument")}>Instrument {sortGlyph("instrument")}</button>
+              </th>
+              <th>
                 <button onClick={() => toggleSort("priority")}>Priority {sortGlyph("priority")}</button>
               </th>
               <th>Quick Tags</th>
@@ -529,6 +658,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             {currentRows.map((target) => {
               const quickTags = getQuickTagsForTarget(target);
               const emissionTags = getEmissionLineTagsForTarget(target);
+              const observationModes = observationModesForDisplay(target);
               const preview = firstImagePreview(target);
               const jadesId = jadesNumericId(target.name);
               return (
@@ -560,7 +690,43 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                   </td>
                   <td>{formatZSpec(target.z_spec)}</td>
                   <td>
-                    <span className="tag">{target.status}</span>
+                    {observationModes.length > 0 ? (
+                      <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
+                        {observationModes.map((mode) => (
+                          <span key={`${target.emerald_id}-status-${mode.instrument}-${mode.status}`} className="tag">
+                            {mode.status}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="muted">-</span>
+                    )}
+                  </td>
+                  <td>
+                    {observationModes.length > 0 ? (
+                      <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
+                        {observationModes.map((mode) => (
+                          <button
+                            key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
+                            type="button"
+                            className="tag"
+                            onClick={() => {
+                              const nextValue = toggleTagValue(appliedFilters.instrumentQuery, mode.instrument);
+                              setDraftFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                              setAppliedFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                              setPage(1);
+                              setPageInput("1");
+                            }}
+                            style={{ cursor: "pointer" }}
+                            title={`Filter by instrument: ${mode.instrument}`}
+                          >
+                            {mode.instrument}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="muted">-</span>
+                    )}
                   </td>
                   <td>{target.priority}</td>
                   <td>
@@ -664,12 +830,6 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
 
       <datalist id="target-quick-tags">
         {allQuickTags.map((tag) => (
-          <option key={tag} value={tag} />
-        ))}
-      </datalist>
-
-      <datalist id="target-emission-tags">
-        {allEmissionTags.map((tag) => (
           <option key={tag} value={tag} />
         ))}
       </datalist>
