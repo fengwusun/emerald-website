@@ -9,6 +9,17 @@ function isImageAssetPath(pathname: string): boolean {
   return /\.(png|jpg|jpeg)(\?|$)/i.test(pathname);
 }
 
+function ancillaryTagLabel(assetType: string, storageKey: string): string {
+  const key = storageKey.toLowerCase();
+  if (assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(key)) {
+    return "spec-plot";
+  }
+  if (assetType === "other" && /\.fits$/i.test(key)) {
+    return "spec-fits";
+  }
+  return assetType;
+}
+
 export default async function TargetDetailPage({
   params
 }: {
@@ -110,7 +121,7 @@ export default async function TargetDetailPage({
             {target.ancillary_assets.map((asset) => (
               <article key={`${asset.asset_type}-${asset.storage_key}`} className="card">
                 <p>
-                  <span className="tag">{asset.asset_type}</span> {asset.label}
+                  <span className="tag">{ancillaryTagLabel(asset.asset_type, asset.storage_key)}</span> {asset.label}
                 </p>
                 <p className="muted">Storage key: {asset.storage_key}</p>
                 {asset.preview_url ? (
