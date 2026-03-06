@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { withBasePath } from "@/lib/base-path";
 
 type CoiOption = {
   name: string;
@@ -353,7 +354,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
       let loadedContent: PageContent | null = null;
 
       try {
-        const response = await fetch("/api/science-projects", {
+        const response = await fetch(withBasePath("/api/science-projects"), {
           method: "GET",
           cache: "no-store"
         });
@@ -427,7 +428,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
     if (!adminMode || !adminAuthorized) return;
 
     const timeout = window.setTimeout(() => {
-      void fetch("/api/science-projects", {
+      void fetch(withBasePath("/api/science-projects"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -468,7 +469,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
     }
 
     try {
-      const response = await fetch("/api/science-projects/join", {
+      const response = await fetch(withBasePath("/api/science-projects/join"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -530,7 +531,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
     }
 
     try {
-      const response = await fetch("/api/science-projects/submit", {
+      const response = await fetch(withBasePath("/api/science-projects/submit"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -575,7 +576,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
     event.preventDefault();
 
     try {
-      const response = await fetch("/api/science-projects/admin/login", {
+      const response = await fetch(withBasePath("/api/science-projects/admin/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: adminPassword })
@@ -601,7 +602,7 @@ export function ScienceProjectsBoard({ members }: { members: CoiOption[] }) {
 
   async function exitAdminMode() {
     try {
-      await fetch("/api/science-projects/admin/logout", {
+      await fetch(withBasePath("/api/science-projects/admin/logout"), {
         method: "POST"
       });
     } catch {

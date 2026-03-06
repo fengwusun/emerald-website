@@ -60,7 +60,12 @@ export type TargetRecord = z.infer<typeof TargetRecordSchema>;
 
 export const CoiMemberSchema = z.object({
   name: z.string().min(1),
-  email: z.string().email(),
+  email: z
+    .string()
+    .transform((value) => value.trim().toLowerCase())
+    .refine((value) => value === "" || z.string().email().safeParse(value).success, {
+      message: "email must be empty or a valid email address"
+    }),
   role: z.string().min(1),
   affiliation: z.string().min(1),
   profile_url: z.string().url().optional(),

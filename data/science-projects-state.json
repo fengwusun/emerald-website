@@ -68,7 +68,14 @@
         "updateLink": "",
         "updateDate": ""
       },
-      "joiners": []
+      "joiners": [
+        {
+          "name": "Fengwu Sun",
+          "email": "fengwu.sun@cfa.harvard.edu",
+          "updateLink": "",
+          "updateDate": ""
+        }
+      ]
     }
   ],
   "content": {
