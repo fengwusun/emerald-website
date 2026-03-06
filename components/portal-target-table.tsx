@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
@@ -39,6 +40,8 @@ const DEFAULT_FILTERS: FilterState = {
 
 const INSTRUMENT_OPTIONS = ["G140M/F070LP", "PRISM", "G395M/F290LP"] as const;
 const MULTI_VALUE_DELIMITER = "\n";
+const SORT_FIELDS: SortField[] = ["name", "z_spec", "status", "instrument", "priority", "assets"];
+const PAGE_SIZE_OPTIONS = new Set([25, 50, 100]);
 
 function parseSelectedTags(value: string): string[] {
   const seen = new Set<string>();
@@ -54,6 +57,38 @@ function parseSelectedTags(value: string): string[] {
       seen.add(key);
       return true;
     });
+}
+
+function encodeMultiValueForUrl(value: string): string {
+  return parseSelectedTags(value).join(",");
+}
+
+function decodeMultiValueFromUrl(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const normalized = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .join(MULTI_VALUE_DELIMITER);
+  return normalized;
+}
+
+function parseFilterStateFromUrl(searchParams: URLSearchParams): FilterState {
+  return {
+    query: searchParams.get("query") ?? "",
+    quickTagQuery: decodeMultiValueFromUrl(searchParams.get("quickTags")),
+    emissionTagQuery: decodeMultiValueFromUrl(searchParams.get("emissionTags")),
+    status: searchParams.get("status") ?? "all",
+    instrumentQuery: decodeMultiValueFromUrl(searchParams.get("instruments")),
+    priority: searchParams.get("priority") ?? "all",
+    zMin: searchParams.get("zMin") ?? "",
+    zMax: searchParams.get("zMax") ?? "",
+    coneRa: searchParams.get("coneRa") ?? "",
+    coneDec: searchParams.get("coneDec") ?? "",
+    coneRadiusArcsec: searchParams.get("coneRadiusArcsec") ?? DEFAULT_FILTERS.coneRadiusArcsec
+  };
 }
 
 function toggleTagValue(currentValue: string, tag: string): string {
@@ -207,6 +242,9 @@ function ExpandableMultiSelect({
 }
 
 export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [draftFilters, setDraftFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [sortField, setSortField] = useState<SortField>("name");
@@ -214,6 +252,28 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [pageInput, setPageInput] = useState("1");
+
+  useEffect(() => {
+    const parsedFilters = parseFilterStateFromUrl(searchParams);
+    const parsedSort = searchParams.get("sort");
+    const parsedDirection = searchParams.get("dir");
+    const parsedPage = Number(searchParams.get("page") ?? "1");
+    const parsedPageSize = Number(searchParams.get("pageSize") ?? "25");
+
+    const nextSortField: SortField =
+      parsedSort && SORT_FIELDS.includes(parsedSort as SortField) ? (parsedSort as SortField) : "name";
+    const nextSortDirection = parsedDirection === "desc" ? "desc" : "asc";
+    const nextPageSize = PAGE_SIZE_OPTIONS.has(parsedPageSize) ? parsedPageSize : 25;
+    const nextPage = Number.isFinite(parsedPage) && parsedPage > 0 ? Math.trunc(parsedPage) : 1;
+
+    setDraftFilters(parsedFilters);
+    setAppliedFilters(parsedFilters);
+    setSortField(nextSortField);
+    setSortDirection(nextSortDirection);
+    setPageSize(nextPageSize);
+    setPage(nextPage);
+    setPageInput(String(nextPage));
+  }, [searchParams]);
 
   const allQuickTags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -350,10 +410,41 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     return sortDirection === "asc" ? "↑" : "↓";
   }
 
+  function pushSelectionUrl(nextFilters: FilterState, nextPage: number) {
+    const params = new URLSearchParams();
+
+    if (nextFilters.query.trim()) params.set("query", nextFilters.query.trim());
+    if (nextFilters.status !== "all") params.set("status", nextFilters.status);
+    if (nextFilters.priority !== "all") params.set("priority", nextFilters.priority);
+    if (nextFilters.zMin.trim()) params.set("zMin", nextFilters.zMin.trim());
+    if (nextFilters.zMax.trim()) params.set("zMax", nextFilters.zMax.trim());
+    if (nextFilters.coneRa.trim()) params.set("coneRa", nextFilters.coneRa.trim());
+    if (nextFilters.coneDec.trim()) params.set("coneDec", nextFilters.coneDec.trim());
+    if (nextFilters.coneRadiusArcsec.trim() && nextFilters.coneRadiusArcsec.trim() !== DEFAULT_FILTERS.coneRadiusArcsec) {
+      params.set("coneRadiusArcsec", nextFilters.coneRadiusArcsec.trim());
+    }
+
+    const quickTags = encodeMultiValueForUrl(nextFilters.quickTagQuery);
+    if (quickTags) params.set("quickTags", quickTags);
+    const emissionTags = encodeMultiValueForUrl(nextFilters.emissionTagQuery);
+    if (emissionTags) params.set("emissionTags", emissionTags);
+    const instruments = encodeMultiValueForUrl(nextFilters.instrumentQuery);
+    if (instruments) params.set("instruments", instruments);
+
+    if (sortField !== "name") params.set("sort", sortField);
+    if (sortDirection !== "asc") params.set("dir", sortDirection);
+    if (pageSize !== 25) params.set("pageSize", String(pageSize));
+    if (nextPage > 1) params.set("page", String(nextPage));
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
   function applySelection() {
     setAppliedFilters(draftFilters);
     setPage(1);
     setPageInput("1");
+    pushSelectionUrl(draftFilters, 1);
   }
 
   function clearSelection() {
@@ -364,6 +455,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     setPageSize(25);
     setPage(1);
     setPageInput("1");
+    router.replace(pathname, { scroll: false });
   }
 
   function jumpToPage() {

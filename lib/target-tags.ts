@@ -50,6 +50,10 @@ function isDsfgTag(tagLower: string): boolean {
   );
 }
 
+function isEmpgCandidateTag(tagLower: string): boolean {
+  return tagLower.includes("trussler++") || tagLower.includes("empg");
+}
+
 export function getQuickTagsForTarget(target: Pick<TargetRecord, "notes">): string[] {
   const tags: string[] = [];
 
@@ -70,6 +74,10 @@ export function getQuickTagsForTarget(target: Pick<TargetRecord, "notes">): stri
 
     if (isDsfgTag(tagLower)) {
       tags.push("DSFG");
+    }
+
+    if (isEmpgCandidateTag(tagLower)) {
+      tags.push("EMPG candidate");
     }
 
     if (tagLower.includes("high ew oiii + hb")) {
