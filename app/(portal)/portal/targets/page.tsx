@@ -1,10 +1,7 @@
-import { PortalTargetTable } from "@/components/portal-target-table";
-import { loadTargets } from "@/lib/data";
+import { PortalTargetCatalog } from "@/components/portal-target-catalog";
 import { withBasePath } from "@/lib/base-path";
 
 export default function PortalTargetsPage() {
-  const targets = loadTargets();
-
   return (
     <div className="grid">
       <h1>Target Catalog</h1>
@@ -19,7 +16,7 @@ export default function PortalTargetsPage() {
         </a>
         .
       </p>
-      <PortalTargetTable targets={targets} />
+      <PortalTargetCatalog />
     </div>
   );
 }

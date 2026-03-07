@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { withBasePathForApiUrl } from "@/lib/base-path";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
@@ -39,6 +40,8 @@ const DEFAULT_FILTERS: FilterState = {
 
 const INSTRUMENT_OPTIONS = ["G140M/F070LP", "PRISM", "G395M/F290LP"] as const;
 const MULTI_VALUE_DELIMITER = "\n";
+const SORT_FIELDS: SortField[] = ["name", "z_spec", "status", "instrument", "priority", "assets"];
+const PAGE_SIZE_OPTIONS = new Set([25, 50, 100]);
 
 function parseSelectedTags(value: string): string[] {
   const seen = new Set<string>();
@@ -54,6 +57,76 @@ function parseSelectedTags(value: string): string[] {
       seen.add(key);
       return true;
     });
+}
+
+function encodeMultiValueForUrl(value: string): string {
+  return parseSelectedTags(value).join(",");
+}
+
+function decodeMultiValueFromUrl(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const normalized = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .join(MULTI_VALUE_DELIMITER);
+  return normalized;
+}
+
+function parseFilterStateFromUrl(searchParams: URLSearchParams): FilterState {
+  return {
+    query: searchParams.get("query") ?? "",
+    quickTagQuery: decodeMultiValueFromUrl(searchParams.get("quickTags")),
+    emissionTagQuery: decodeMultiValueFromUrl(searchParams.get("emissionTags")),
+    status: searchParams.get("status") ?? "all",
+    instrumentQuery: decodeMultiValueFromUrl(searchParams.get("instruments")),
+    priority: searchParams.get("priority") ?? "all",
+    zMin: searchParams.get("zMin") ?? "",
+    zMax: searchParams.get("zMax") ?? "",
+    coneRa: searchParams.get("coneRa") ?? "",
+    coneDec: searchParams.get("coneDec") ?? "",
+    coneRadiusArcsec: searchParams.get("coneRadiusArcsec") ?? DEFAULT_FILTERS.coneRadiusArcsec
+  };
+}
+
+function buildSearchParamsFromState(
+  nextFilters: FilterState,
+  nextSortField: SortField,
+  nextSortDirection: "asc" | "desc",
+  nextPage: number,
+  nextPageSize: number
+): URLSearchParams {
+  const params = new URLSearchParams();
+
+  if (nextFilters.query.trim()) params.set("query", nextFilters.query.trim());
+  if (nextFilters.status !== "all") params.set("status", nextFilters.status);
+  if (nextFilters.priority !== "all") params.set("priority", nextFilters.priority);
+  if (nextFilters.zMin.trim()) params.set("zMin", nextFilters.zMin.trim());
+  if (nextFilters.zMax.trim()) params.set("zMax", nextFilters.zMax.trim());
+  if (nextFilters.coneRa.trim()) params.set("coneRa", nextFilters.coneRa.trim());
+  if (nextFilters.coneDec.trim()) params.set("coneDec", nextFilters.coneDec.trim());
+  if (
+    nextFilters.coneRadiusArcsec.trim() &&
+    nextFilters.coneRadiusArcsec.trim() !== DEFAULT_FILTERS.coneRadiusArcsec
+  ) {
+    params.set("coneRadiusArcsec", nextFilters.coneRadiusArcsec.trim());
+  }
+
+  const quickTags = encodeMultiValueForUrl(nextFilters.quickTagQuery);
+  if (quickTags) params.set("quickTags", quickTags);
+  const emissionTags = encodeMultiValueForUrl(nextFilters.emissionTagQuery);
+  if (emissionTags) params.set("emissionTags", emissionTags);
+  const instruments = encodeMultiValueForUrl(nextFilters.instrumentQuery);
+  if (instruments) params.set("instruments", instruments);
+
+  if (nextSortField !== "name") params.set("sort", nextSortField);
+  if (nextSortDirection !== "asc") params.set("dir", nextSortDirection);
+  if (nextPageSize !== 25) params.set("pageSize", String(nextPageSize));
+  if (nextPage > 1) params.set("page", String(nextPage));
+
+  return params;
 }
 
 function toggleTagValue(currentValue: string, tag: string): string {
@@ -75,12 +148,8 @@ function matchesAllSelectedTags(targetTags: string[], selectedTags: string[]): b
   );
 }
 
-function toRadians(value: number): number {
-  return (value * Math.PI) / 180;
-}
-
 function normalizedZSpec(value: number): number {
-  return Math.abs(value - 1) < 1e-9 ? -1 : value;
+  return Math.abs(value - 1) < 1e-9 || Math.abs(value) < 1e-9 ? -1 : value;
 }
 
 function formatZSpec(value: number): string {
@@ -88,21 +157,19 @@ function formatZSpec(value: number): string {
   return normalized === -1 ? "-1" : normalized.toFixed(2);
 }
 
-function angularSeparationArcsec(raDeg1: number, decDeg1: number, raDeg2: number, decDeg2: number): number {
-  const ra1 = toRadians(raDeg1);
-  const dec1 = toRadians(decDeg1);
-  const ra2 = toRadians(raDeg2);
-  const dec2 = toRadians(decDeg2);
+function normalizedRaDeltaDeg(delta: number): number {
+  let wrapped = delta;
+  while (wrapped > 180) wrapped -= 360;
+  while (wrapped < -180) wrapped += 360;
+  return wrapped;
+}
 
-  const sinD1 = Math.sin(dec1);
-  const sinD2 = Math.sin(dec2);
-  const cosD1 = Math.cos(dec1);
-  const cosD2 = Math.cos(dec2);
-  const cosDeltaRa = Math.cos(ra1 - ra2);
-
-  const cosAngle = Math.min(1, Math.max(-1, sinD1 * sinD2 + cosD1 * cosD2 * cosDeltaRa));
-  const angleRad = Math.acos(cosAngle);
-  return (angleRad * 180 * 3600) / Math.PI;
+function coneMetricSeparationArcsec(ra0Deg: number, dec0Deg: number, raDeg: number, decDeg: number): number {
+  const deltaRaDeg = normalizedRaDeltaDeg(raDeg - ra0Deg);
+  const deltaDecDeg = decDeg - dec0Deg;
+  const cosDec0 = Math.cos((dec0Deg * Math.PI) / 180);
+  const distanceDeg = Math.sqrt((deltaRaDeg * cosDec0) ** 2 + deltaDecDeg ** 2);
+  return distanceDeg * 3600;
 }
 
 function firstImagePreview(target: TargetRecord): string | null {
@@ -112,6 +179,33 @@ function firstImagePreview(target: TargetRecord): string | null {
     }
   }
   return null;
+}
+
+function spectrumPreviewForInstrument(target: TargetRecord, instrument: string): string | null {
+  const instrumentLower = instrument.toLowerCase();
+
+  const preferredSpectrum = target.ancillary_assets.find((asset) => {
+    if (asset.asset_type !== "spectrum" || !asset.preview_url) {
+      return false;
+    }
+    const key = asset.storage_key.toLowerCase();
+    if (instrumentLower === "g140m/f070lp") {
+      return key.includes("diver_grating_plots/");
+    }
+    if (instrumentLower === "prism") {
+      return key.includes("diver_prism_plots/");
+    }
+    return false;
+  });
+
+  if (preferredSpectrum?.preview_url) {
+    return withBasePathForApiUrl(preferredSpectrum.preview_url);
+  }
+
+  const fallback = target.ancillary_assets.find(
+    (asset) => asset.asset_type === "spectrum" && asset.preview_url
+  );
+  return fallback?.preview_url ? withBasePathForApiUrl(fallback.preview_url) : null;
 }
 
 function jadesNumericId(name: string): string | null {
@@ -180,6 +274,9 @@ function ExpandableMultiSelect({
 }
 
 export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [draftFilters, setDraftFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [sortField, setSortField] = useState<SortField>("name");
@@ -187,6 +284,30 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [pageInput, setPageInput] = useState("1");
+  const [initializedFromUrl, setInitializedFromUrl] = useState(false);
+
+  useEffect(() => {
+    const parsedFilters = parseFilterStateFromUrl(searchParams);
+    const parsedSort = searchParams.get("sort");
+    const parsedDirection = searchParams.get("dir");
+    const parsedPage = Number(searchParams.get("page") ?? "1");
+    const parsedPageSize = Number(searchParams.get("pageSize") ?? "25");
+
+    const nextSortField: SortField =
+      parsedSort && SORT_FIELDS.includes(parsedSort as SortField) ? (parsedSort as SortField) : "name";
+    const nextSortDirection = parsedDirection === "desc" ? "desc" : "asc";
+    const nextPageSize = PAGE_SIZE_OPTIONS.has(parsedPageSize) ? parsedPageSize : 25;
+    const nextPage = Number.isFinite(parsedPage) && parsedPage > 0 ? Math.trunc(parsedPage) : 1;
+
+    setDraftFilters(parsedFilters);
+    setAppliedFilters(parsedFilters);
+    setSortField(nextSortField);
+    setSortDirection(nextSortDirection);
+    setPageSize(nextPageSize);
+    setPage(nextPage);
+    setPageInput(String(nextPage));
+    setInitializedFromUrl(true);
+  }, [searchParams]);
 
   const allQuickTags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -221,39 +342,6 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     const selectedInstruments = parseSelectedTags(appliedFilters.instrumentQuery);
     const zMinNum = appliedFilters.zMin.trim() === "" ? null : Number(appliedFilters.zMin);
     const zMaxNum = appliedFilters.zMax.trim() === "" ? null : Number(appliedFilters.zMax);
-
-    let rows = targets.filter((target) => {
-      const quickTags = getQuickTagsForTarget(target);
-      const emissionTags = getEmissionLineTagsForTarget(target);
-      const observationModes = observationModesForDisplay(target);
-      const relevantModes =
-        selectedInstruments.length > 0
-          ? observationModes.filter((mode) =>
-              selectedInstruments.some(
-                (selectedInstrument) => selectedInstrument.toLowerCase() === mode.instrument.toLowerCase()
-              )
-            )
-          : observationModes;
-      if (appliedFilters.status !== "all" && !relevantModes.some((mode) => mode.status === appliedFilters.status)) {
-        return false;
-      }
-      if (!matchesAllSelectedTags(target.instruments, selectedInstruments)) return false;
-      if (appliedFilters.priority !== "all" && target.priority !== appliedFilters.priority) return false;
-      if (zMinNum !== null && Number.isFinite(zMinNum) && normalizedZSpec(target.z_spec) < zMinNum) return false;
-      if (zMaxNum !== null && Number.isFinite(zMaxNum) && normalizedZSpec(target.z_spec) > zMaxNum) return false;
-      if (!matchesAllSelectedTags(quickTags, selectedQuickTags)) return false;
-      if (!matchesAllSelectedTags(emissionTags, selectedEmissionTags)) return false;
-      if (!q) return true;
-      return (
-        target.emerald_id.toLowerCase().includes(q) ||
-        target.name.toLowerCase().includes(q) ||
-        target.instrument.toLowerCase().includes(q) ||
-        target.notes.toLowerCase().includes(q) ||
-        quickTags.some((tag) => tag.toLowerCase().includes(q)) ||
-        emissionTags.some((tag) => tag.toLowerCase().includes(q))
-      );
-    });
-
     const hasConeRa = appliedFilters.coneRa.trim() !== "";
     const hasConeDec = appliedFilters.coneDec.trim() !== "";
     const raNum = Number(appliedFilters.coneRa);
@@ -267,23 +355,51 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
       Number.isFinite(radiusNum) &&
       radiusNum > 0;
 
-    if (coneEnabled) {
-      let best: TargetRecord | null = null;
-      let bestSep = Number.POSITIVE_INFINITY;
+    let rows: TargetRecord[];
 
-      for (const target of rows) {
-        const sep = angularSeparationArcsec(raNum, decNum, target.ra, target.dec);
-        if (sep < bestSep) {
-          bestSep = sep;
-          best = target;
+    if (coneEnabled) {
+      const coneMatches: Array<{ target: TargetRecord; separationArcsec: number }> = [];
+      for (const target of targets) {
+        const sep = coneMetricSeparationArcsec(raNum, decNum, target.ra, target.dec);
+        if (sep <= radiusNum) {
+          coneMatches.push({ target, separationArcsec: sep });
         }
       }
-
-      if (best && bestSep <= radiusNum) {
-        rows = [best];
-      } else {
-        rows = [];
-      }
+      rows = coneMatches
+        .sort((a, b) => a.separationArcsec - b.separationArcsec || a.target.name.localeCompare(b.target.name))
+        .map((match) => match.target);
+    } else {
+      rows = targets.filter((target) => {
+        const quickTags = getQuickTagsForTarget(target);
+        const emissionTags = getEmissionLineTagsForTarget(target);
+        const observationModes = observationModesForDisplay(target);
+        const relevantModes =
+          selectedInstruments.length > 0
+            ? observationModes.filter((mode) =>
+                selectedInstruments.some(
+                  (selectedInstrument) => selectedInstrument.toLowerCase() === mode.instrument.toLowerCase()
+                )
+              )
+            : observationModes;
+        if (appliedFilters.status !== "all" && !relevantModes.some((mode) => mode.status === appliedFilters.status)) {
+          return false;
+        }
+        if (!matchesAllSelectedTags(target.instruments, selectedInstruments)) return false;
+        if (appliedFilters.priority !== "all" && target.priority !== appliedFilters.priority) return false;
+        if (zMinNum !== null && Number.isFinite(zMinNum) && normalizedZSpec(target.z_spec) < zMinNum) return false;
+        if (zMaxNum !== null && Number.isFinite(zMaxNum) && normalizedZSpec(target.z_spec) > zMaxNum) return false;
+        if (!matchesAllSelectedTags(quickTags, selectedQuickTags)) return false;
+        if (!matchesAllSelectedTags(emissionTags, selectedEmissionTags)) return false;
+        if (!q) return true;
+        return (
+          target.emerald_id.toLowerCase().includes(q) ||
+          target.name.toLowerCase().includes(q) ||
+          target.instrument.toLowerCase().includes(q) ||
+          target.notes.toLowerCase().includes(q) ||
+          quickTags.some((tag) => tag.toLowerCase().includes(q)) ||
+          emissionTags.some((tag) => tag.toLowerCase().includes(q))
+        );
+      });
     }
 
     return rows.sort((a, b) => {
@@ -323,6 +439,35 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     return sortDirection === "asc" ? "↑" : "↓";
   }
 
+  useEffect(() => {
+    if (!initializedFromUrl) {
+      return;
+    }
+    const nextParams = buildSearchParamsFromState(
+      appliedFilters,
+      sortField,
+      sortDirection,
+      page,
+      pageSize
+    );
+    const nextQuery = nextParams.toString();
+    const currentQuery = searchParams.toString();
+    if (nextQuery === currentQuery) {
+      return;
+    }
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  }, [
+    initializedFromUrl,
+    appliedFilters,
+    sortField,
+    sortDirection,
+    page,
+    pageSize,
+    pathname,
+    router,
+    searchParams
+  ]);
+
   function applySelection() {
     setAppliedFilters(draftFilters);
     setPage(1);
@@ -337,6 +482,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
     setPageSize(25);
     setPage(1);
     setPageInput("1");
+    router.replace(pathname, { scroll: false });
   }
 
   function jumpToPage() {
@@ -350,32 +496,54 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
   }
 
   function setQuickTagFilter(tag: string) {
-    setDraftFilters((prev) => ({ ...prev, quickTagQuery: toggleTagValue(prev.quickTagQuery, tag) }));
-    setAppliedFilters((prev) => ({ ...prev, quickTagQuery: toggleTagValue(prev.quickTagQuery, tag) }));
+    const nextQuickTagQuery = toggleTagValue(appliedFilters.quickTagQuery, tag);
+    setDraftFilters((prev) => ({ ...prev, quickTagQuery: nextQuickTagQuery }));
+    setAppliedFilters((prev) => ({ ...prev, quickTagQuery: nextQuickTagQuery }));
     setPage(1);
     setPageInput("1");
   }
 
   function setEmissionTagFilter(tag: string) {
-    setDraftFilters((prev) => ({ ...prev, emissionTagQuery: toggleTagValue(prev.emissionTagQuery, tag) }));
-    setAppliedFilters((prev) => ({ ...prev, emissionTagQuery: toggleTagValue(prev.emissionTagQuery, tag) }));
+    const nextEmissionTagQuery = toggleTagValue(appliedFilters.emissionTagQuery, tag);
+    setDraftFilters((prev) => ({ ...prev, emissionTagQuery: nextEmissionTagQuery }));
+    setAppliedFilters((prev) => ({ ...prev, emissionTagQuery: nextEmissionTagQuery }));
     setPage(1);
     setPageInput("1");
+  }
+
+  function handleSelectionSubmitFromKeyboard(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== "Enter") {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.tagName === "TEXTAREA") {
+      return;
+    }
+    event.preventDefault();
+    applySelection();
   }
 
   const selectedQuickTags = parseSelectedTags(appliedFilters.quickTagQuery);
   const selectedEmissionTags = parseSelectedTags(appliedFilters.emissionTagQuery);
   const selectedInstruments = parseSelectedTags(appliedFilters.instrumentQuery);
+  const currentCatalogUrl = useMemo(() => {
+    const query = searchParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
 
   return (
     <div className="grid">
-      <section className="card grid grid-2">
+      <section className="card grid grid-2" onKeyDown={handleSelectionSubmitFromKeyboard}>
         <label>
           Search by JADES ID / target ID
           <input
             value={draftFilters.query}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, query: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, query: value }));
+              setAppliedFilters((prev) => ({ ...prev, query: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="JADES-1008580 or EMR-8580"
           />
@@ -386,7 +554,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             list="target-quick-tags"
             value={draftFilters.quickTagQuery}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, quickTagQuery: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, quickTagQuery: value }));
+              setAppliedFilters((prev) => ({ ...prev, quickTagQuery: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="Select one or more"
           />
@@ -397,10 +569,17 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             options={allEmissionTags}
             selectedValues={parseSelectedTags(draftFilters.emissionTagQuery)}
             onChange={(nextValues) => {
+              const nextValue = nextValues.join(MULTI_VALUE_DELIMITER);
               setDraftFilters((prev) => ({
                 ...prev,
-                emissionTagQuery: nextValues.join(MULTI_VALUE_DELIMITER)
+                emissionTagQuery: nextValue
               }));
+              setAppliedFilters((prev) => ({
+                ...prev,
+                emissionTagQuery: nextValue
+              }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="Select one or more"
           />
@@ -410,7 +589,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           <select
             value={draftFilters.status}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, status: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, status: value }));
+              setAppliedFilters((prev) => ({ ...prev, status: value }));
+              setPage(1);
+              setPageInput("1");
             }}
           >
             <option value="all">All</option>
@@ -425,10 +608,17 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             options={INSTRUMENT_OPTIONS}
             selectedValues={parseSelectedTags(draftFilters.instrumentQuery)}
             onChange={(nextValues) => {
+              const nextValue = nextValues.join(MULTI_VALUE_DELIMITER);
               setDraftFilters((prev) => ({
                 ...prev,
-                instrumentQuery: nextValues.join(MULTI_VALUE_DELIMITER)
+                instrumentQuery: nextValue
               }));
+              setAppliedFilters((prev) => ({
+                ...prev,
+                instrumentQuery: nextValue
+              }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="Select one or more"
           />
@@ -438,7 +628,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
           <select
             value={draftFilters.priority}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, priority: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, priority: value }));
+              setAppliedFilters((prev) => ({ ...prev, priority: value }));
+              setPage(1);
+              setPageInput("1");
             }}
           >
             <option value="all">All</option>
@@ -454,7 +648,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             step="0.01"
             value={draftFilters.zMin}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, zMin: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, zMin: value }));
+              setAppliedFilters((prev) => ({ ...prev, zMin: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="4.0"
           />
@@ -466,7 +664,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             step="0.01"
             value={draftFilters.zMax}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, zMax: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, zMax: value }));
+              setAppliedFilters((prev) => ({ ...prev, zMax: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="9.0"
           />
@@ -564,7 +766,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
         </div>
       </section>
 
-      <section className="card grid grid-2">
+      <section className="card grid grid-2" onKeyDown={handleSelectionSubmitFromKeyboard}>
         <label>
           Cone Search RA (deg)
           <input
@@ -572,7 +774,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             step="0.000001"
             value={draftFilters.coneRa}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, coneRa: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, coneRa: value }));
+              setAppliedFilters((prev) => ({ ...prev, coneRa: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="189.3391498"
           />
@@ -584,7 +790,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             step="0.000001"
             value={draftFilters.coneDec}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, coneDec: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, coneDec: value }));
+              setAppliedFilters((prev) => ({ ...prev, coneDec: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="62.2845893"
           />
@@ -596,11 +806,18 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
             step="0.1"
             value={draftFilters.coneRadiusArcsec}
             onChange={(event) => {
-              setDraftFilters((prev) => ({ ...prev, coneRadiusArcsec: event.target.value }));
+              const value = event.target.value;
+              setDraftFilters((prev) => ({ ...prev, coneRadiusArcsec: value }));
+              setAppliedFilters((prev) => ({ ...prev, coneRadiusArcsec: value }));
+              setPage(1);
+              setPageInput("1");
             }}
             placeholder="2"
           />
         </label>
+        <p className="muted" style={{ gridColumn: "1 / -1", marginTop: 0 }}>
+          Cone search returns the single best-match target within the radius and overrides other filters.
+        </p>
       </section>
 
       <section className="card">
@@ -618,6 +835,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
               onChange={(event) => {
                 setPageSize(Number(event.target.value));
                 setPage(1);
+                setPageInput("1");
               }}
               style={{ width: "auto" }}
             >
@@ -665,7 +883,13 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                 <tr key={target.emerald_id}>
                   <td>
                     <span className="jades-cell">
-                      <Link href={`/portal/targets/${target.emerald_id}`}>{target.name}</Link>
+                      <Link
+                        href={withBasePath(
+                          `/portal/targets/${target.emerald_id}?next=${encodeURIComponent(currentCatalogUrl)}`
+                        )}
+                      >
+                        {target.name}
+                      </Link>
                       {jadesId ? (
                         <a
                           href={`https://jades.idies.jhu.edu/goods-n/goodsn_eazy_seds_v10e1/${jadesId}_EAZY_SED.png`}
@@ -705,24 +929,59 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                   <td>
                     {observationModes.length > 0 ? (
                       <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
-                        {observationModes.map((mode) => (
-                          <button
-                            key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
-                            type="button"
-                            className="tag"
-                            onClick={() => {
-                              const nextValue = toggleTagValue(appliedFilters.instrumentQuery, mode.instrument);
-                              setDraftFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
-                              setAppliedFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
-                              setPage(1);
-                              setPageInput("1");
-                            }}
-                            style={{ cursor: "pointer" }}
-                            title={`Filter by instrument: ${mode.instrument}`}
-                          >
-                            {mode.instrument}
-                          </button>
-                        ))}
+                        {observationModes.map((mode) => {
+                          const spectrumPreview = spectrumPreviewForInstrument(target, mode.instrument);
+                          const showSpectrum =
+                            (mode.instrument.toLowerCase() === "g140m/f070lp" ||
+                              mode.instrument.toLowerCase() === "prism") &&
+                            spectrumPreview;
+                          if (showSpectrum) {
+                            return (
+                              <span
+                                key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
+                                className="jades-cell"
+                              >
+                                <a
+                                  href={spectrumPreview}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="tag"
+                                  title={`${mode.instrument}: click to open spectrum`}
+                                >
+                                  {mode.instrument}
+                                </a>
+                                <span className="hover-preview hover-preview--spectrum" role="tooltip">
+                                  <Image
+                                    src={spectrumPreview}
+                                    alt={`${target.name} ${mode.instrument} spectrum`}
+                                    width={320}
+                                    height={220}
+                                    unoptimized
+                                  />
+                                </span>
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
+                              type="button"
+                              className="tag"
+                              onClick={() => {
+                                const nextValue = toggleTagValue(appliedFilters.instrumentQuery, mode.instrument);
+                                setDraftFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                                setAppliedFilters((prev) => ({ ...prev, instrumentQuery: nextValue }));
+                                setPage(1);
+                                setPageInput("1");
+                              }}
+                              style={{ cursor: "pointer" }}
+                              title={`Filter by instrument: ${mode.instrument}`}
+                            >
+                              {mode.instrument}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <span className="muted">-</span>

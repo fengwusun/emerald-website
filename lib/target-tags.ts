@@ -40,38 +40,60 @@ function isAgnTag(tagLower: string): boolean {
   return tagLower.includes("agn") || tagLower.includes("lrd");
 }
 
+function isDsfgTag(tagLower: string): boolean {
+  return (
+    tagLower.includes("n2cls") ||
+    tagLower.includes("hdf850.1") ||
+    tagLower.includes("xiao+") ||
+    tagLower.includes("nircam-dark") ||
+    tagLower.includes("gn10")
+  );
+}
+
+function isEmpgCandidateTag(tagLower: string): boolean {
+  return tagLower.includes("trussler++") || tagLower.includes("empg");
+}
+
 export function getQuickTagsForTarget(target: Pick<TargetRecord, "notes">): string[] {
   const tags: string[] = [];
 
   for (const tag of splitNoteTags(target.notes)) {
     const tagLower = tag.toLowerCase();
-    let replaced = false;
 
     if (isLiteratureUvEmitterTag(tagLower)) {
-      tags.push("Literature UV emitter");
-      replaced = true;
+      tags.push("UV Literature");
     }
 
     if (isJadesNirspecTag(tagLower)) {
-      tags.push("JADES-NIRSpec sources");
-      replaced = true;
+      tags.push("JADES-NIRSpec");
     }
 
     if (isAgnTag(tagLower)) {
-      tags.push("AGNs");
-      replaced = true;
+      tags.push("AGN/LRD");
     }
 
-    if (tagLower === "prism 2mask" || tagLower === "grism low o3") {
-      replaced = true;
+    if (isDsfgTag(tagLower)) {
+      tags.push("DSFG");
     }
 
-    if (tagLower === "hb") {
-      replaced = true;
+    if (isEmpgCandidateTag(tagLower)) {
+      tags.push("EMPG candidate");
     }
 
-    if (!replaced) {
-      tags.push(tag);
+    if (tagLower.includes("high ew oiii + hb")) {
+      tags.push("High-EW OIII+Hb");
+    }
+
+    if (tagLower.includes("prism 2mask")) {
+      tags.push("Prism-2mask");
+    }
+
+    if (tagLower.includes("filler")) {
+      tags.push("Filler");
+    }
+
+    if (tagLower.includes("low o3/hb")) {
+      tags.push("Low O3/Hb");
     }
   }
 

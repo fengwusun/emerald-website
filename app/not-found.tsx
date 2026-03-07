@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/base-path";
 
 export default function NotFoundPage() {
   return (
@@ -6,7 +7,7 @@ export default function NotFoundPage() {
       <h1>Not Found</h1>
       <p className="muted">The requested page or target does not exist.</p>
       <p>
-        <Link href="/">Return to home</Link>
+        <Link href={withBasePath("/")}>Return to home</Link>
       </p>
     </div>
   );

@@ -34,6 +34,10 @@ export const config = {
     "/science-projects/:path*",
     "/portal/:path*",
     "/api/assets/sign",
-    "/api/targets/image"
+    "/api/targets/image",
+    "/api/targets/file",
+    "/api/targets/catalog",
+    "/api/spectra/1d",
+    "/api/redshift-submissions"
   ]
 };

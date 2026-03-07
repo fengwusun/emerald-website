@@ -15,6 +15,10 @@ export const AncillaryAssetSchema = z.object({
       message: "preview_url must be an absolute URL or an internal path"
     })
     .optional(),
+  spectrum_profile: z
+    .string()
+    .regex(/^[-a-zA-Z0-9_]+$/)
+    .optional(),
   access_level: z.enum(["team", "public"]).default("team")
 });
 
@@ -76,3 +80,25 @@ export const CoiMemberSchema = z.object({
 });
 
 export type CoiMember = z.infer<typeof CoiMemberSchema>;
+
+export const RedshiftSubmissionInputSchema = z.object({
+  emerald_id: z.string().trim().min(1).optional(),
+  source_name: z.string().trim().min(1),
+  source_id: z.string().trim().min(1).optional(),
+  z_best: z.number().finite().gt(-1).lt(20),
+  selected_line_ids: z.array(z.string().trim().min(1)).default([]),
+  confidence: z.enum(["low", "medium", "high"]).optional(),
+  reporter_name: z.string().trim().min(1).max(120),
+  reporter_email: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((value) => value.length === 0 || z.string().email().safeParse(value).success, {
+      message: "reporter_email must be empty or a valid email address"
+    })
+    .optional(),
+  comment: z.string().trim().max(1200).optional(),
+  spectrum_asset_key: z.string().trim().max(500).optional()
+});
+
+export type RedshiftSubmissionInput = z.infer<typeof RedshiftSubmissionInputSchema>;

@@ -4,13 +4,32 @@ import { notFound } from "next/navigation";
 import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
+import { Spectrum1DViewer } from "@/components/spectrum-1d-viewer";
+
+function isImageAssetPath(pathname: string): boolean {
+  return /\.(png|jpg|jpeg)(\?|$)/i.test(pathname);
+}
+
+function ancillaryTagLabel(assetType: string, storageKey: string): string {
+  const key = storageKey.toLowerCase();
+  if (assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(key)) {
+    return "spec-plot";
+  }
+  if (assetType === "other" && /\.fits$/i.test(key)) {
+    return "spec-fits";
+  }
+  return assetType;
+}
 
 export default async function TargetDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ emerald_id: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
   const { emerald_id } = await params;
+  const resolvedSearchParams = await searchParams;
   const target = getTargetById(emerald_id);
 
   if (!target) {
@@ -25,11 +44,24 @@ export default async function TargetDetailPage({
     target.observation_modes.length > 0
       ? target.observation_modes
       : target.instruments.map((instrument) => ({ instrument, status: target.status }));
+  const oneDSpectrumAssets = target.ancillary_assets
+    .filter(
+      (asset) =>
+        /_x1d\.fits$/i.test(asset.storage_key) ||
+        /_x1d\.json$/i.test(asset.storage_key)
+    )
+    .map((asset) => ({
+      storageKey: asset.storage_key,
+      label: asset.label,
+      profile: asset.spectrum_profile
+    }));
+  const requestedNext = typeof resolvedSearchParams.next === "string" ? resolvedSearchParams.next : "";
+  const backHref = requestedNext.startsWith("/portal/targets") ? requestedNext : "/portal/targets";
 
   return (
     <div className="grid">
       <p>
-        <Link href="/portal/targets">← Back to catalog</Link>
+        <Link href={withBasePath(backHref)}>← Back to catalog</Link>
       </p>
       <h1>{target.name}</h1>
       <p className="muted">{target.emerald_id}</p>
@@ -104,19 +136,25 @@ export default async function TargetDetailPage({
         ) : (
           <div className="grid">
             {target.ancillary_assets.map((asset) => (
-              <article key={`${asset.asset_type}-${asset.storage_key}`} className="card">
+              <article
+                key={`${asset.asset_type}-${asset.storage_key}-${asset.spectrum_profile ?? ""}`}
+                className="card"
+              >
                 <p>
-                  <span className="tag">{asset.asset_type}</span> {asset.label}
+                  <span className="tag">{ancillaryTagLabel(asset.asset_type, asset.storage_key)}</span> {asset.label}
                 </p>
                 <p className="muted">Storage key: {asset.storage_key}</p>
                 {asset.preview_url ? (
                   <div className="grid">
                     <p>
                       <a href={withBasePathForApiUrl(asset.preview_url)} target="_blank" rel="noreferrer">
-                        Preview
+                        {/\.fits$/i.test(asset.storage_key) ? "Download FITS" : "Preview"}
                       </a>
                     </p>
-                    {asset.asset_type === "image" ? (
+                    {(asset.asset_type === "image" ||
+                      (asset.asset_type === "spectrum" &&
+                        asset.preview_url &&
+                        isImageAssetPath(asset.preview_url))) ? (
                       <Image
                         src={withBasePathForApiUrl(asset.preview_url)}
                         alt={`${target.emerald_id} ${asset.label}`}
@@ -133,6 +171,15 @@ export default async function TargetDetailPage({
           </div>
         )}
       </section>
+
+      {oneDSpectrumAssets.length > 0 ? (
+        <Spectrum1DViewer
+          assets={oneDSpectrumAssets}
+          zSpec={target.z_spec}
+          sourceName={target.name}
+          emeraldId={target.emerald_id}
+        />
+      ) : null}
 
       <form method="post" action={withBasePath("/api/portal/logout")}>
         <button type="submit" className="secondary">

@@ -19,8 +19,9 @@ export default function PortalLayout({
   return (
     <div className="grid">
       <nav className="card nav" aria-label="Portal navigation">
-        <Link href="/portal">Overview</Link>
-        <Link href="/portal/targets">Targets</Link>
+        <Link href={withBasePath("/portal")}>Overview</Link>
+        <Link href={withBasePath("/portal/targets")}>Targets</Link>
+        <Link href={withBasePath("/portal/redshift-submissions")}>Redshift Reports</Link>
         <a href={withBasePath("/fitsmap/index.html")} target="_blank" rel="noreferrer">
           FitsMap
         </a>
