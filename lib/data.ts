@@ -14,6 +14,7 @@ const DIVER_GRATING_INSTRUMENT = "G140M/F070LP";
 const DIVER_PRISM_INSTRUMENT = "PRISM";
 const DIVER_GRATING_DIR = "diver_grating_plots";
 const DIVER_PRISM_PLOT_DIR = "diver_prism_plots";
+const JADES_PHOTOMETRY_DIR = "jades_photometry";
 
 const EMISSION_TAG_COLUMNS: ReadonlyArray<{ column: string; tag: string }> = [
   { column: "LyA", tag: "LyA" },
@@ -58,6 +59,12 @@ type GratingCsvAssetRecord = {
   grating: string;
   filename: string;
   profiles: Array<{ column: string; slug: string }>;
+};
+
+type PhotometryAssetRecord = {
+  sourceId: string;
+  kind: "CIRC" | "KRON";
+  filename: string;
 };
 
 type ObservationMode = {
@@ -217,6 +224,16 @@ function buildPrismFitsAsset(record: PrismFitsAssetRecord) {
     label: `${label} (o${record.observationNumber})`,
     storage_key: `${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
     preview_url: `/api/targets/file?file=${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    access_level: "team" as const
+  };
+}
+
+function buildPhotometryAsset(record: PhotometryAssetRecord) {
+  return {
+    asset_type: "other" as const,
+    label: `JADES DR5 Photometry ${record.kind}`,
+    storage_key: `${JADES_PHOTOMETRY_DIR}/${record.filename}`,
+    preview_url: `/api/targets/file?file=${JADES_PHOTOMETRY_DIR}/${record.filename}`,
     access_level: "team" as const
   };
 }
@@ -395,6 +412,41 @@ function loadPrismFitsAssetsBySourceId(): Map<string, PrismFitsAssetRecord[]> {
   return bySourceId;
 }
 
+function loadPhotometryAssetsBySourceId(): Map<string, PhotometryAssetRecord[]> {
+  const photometryDir = path.join(localMediaBaseDir(), JADES_PHOTOMETRY_DIR);
+  if (!fs.existsSync(photometryDir)) {
+    return new Map();
+  }
+
+  const files = fs.readdirSync(photometryDir);
+  const bySourceId = new Map<string, PhotometryAssetRecord[]>();
+  const pattern = /^jades_([0-9]+)_(CIRC|KRON)\.csv$/i;
+
+  for (const filename of files) {
+    const match = filename.match(pattern);
+    if (!match) {
+      continue;
+    }
+    const record: PhotometryAssetRecord = {
+      sourceId: match[1],
+      kind: match[2].toUpperCase() === "KRON" ? "KRON" : "CIRC",
+      filename
+    };
+    const existing = bySourceId.get(record.sourceId) ?? [];
+    existing.push(record);
+    bySourceId.set(record.sourceId, existing);
+  }
+
+  for (const [sourceId, records] of bySourceId.entries()) {
+    bySourceId.set(
+      sourceId,
+      records.sort((a, b) => a.filename.localeCompare(b.filename))
+    );
+  }
+
+  return bySourceId;
+}
+
 function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
   if (!fs.existsSync(VI_CATALOG_PATH)) {
     return new Map();
@@ -493,6 +545,7 @@ export function loadTargets(): TargetRecord[] {
   const gratingCsvAssetsBySourceId = loadGratingCsvAssetsBySourceId();
   const prismAssetsBySourceId = loadPrismAssetsBySourceId();
   const prismFitsAssetsBySourceId = loadPrismFitsAssetsBySourceId();
+  const photometryAssetsBySourceId = loadPhotometryAssetsBySourceId();
 
   const records = parse(csvRaw, {
     columns: true,
@@ -529,6 +582,7 @@ export function loadTargets(): TargetRecord[] {
     const gratingCsvRecords = gratingCsvAssetsBySourceId.get(sourceId) ?? [];
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
+    const photometryRecords = photometryAssetsBySourceId.get(sourceId) ?? [];
     const gratingCsvAssets = gratingCsvRecords.flatMap((record) =>
       record.profiles.flatMap((profile) => [
         buildDiverGratingCsvSpectrumAsset(record, profile),
@@ -537,7 +591,13 @@ export function loadTargets(): TargetRecord[] {
     );
     const prismAssets = prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord));
     const prismFitsAssets = prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord));
-    let merged = attachAssets(baseTarget, [...gratingCsvAssets, ...prismAssets, ...prismFitsAssets]);
+    const photometryAssets = photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord));
+    let merged = attachAssets(baseTarget, [
+      ...gratingCsvAssets,
+      ...prismAssets,
+      ...prismFitsAssets,
+      ...photometryAssets
+    ]);
 
     if (prismAssets.length > 0) {
       merged = {
@@ -589,7 +649,8 @@ export function loadTargets(): TargetRecord[] {
     ...viCatalogBySourceId.keys(),
     ...gratingCsvAssetsBySourceId.keys(),
     ...prismAssetsBySourceId.keys(),
-    ...prismFitsAssetsBySourceId.keys()
+    ...prismFitsAssetsBySourceId.keys(),
+    ...photometryAssetsBySourceId.keys()
   ]);
 
   for (const sourceId of allCatalogSourceIds) {
@@ -601,6 +662,7 @@ export function loadTargets(): TargetRecord[] {
     const gratingCsvRecords = gratingCsvAssetsBySourceId.get(sourceId) ?? [];
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
+    const photometryRecords = photometryAssetsBySourceId.get(sourceId) ?? [];
     const hasGrating = viRecord !== undefined || gratingCsvRecords.length > 0;
     const hasPrism = prismRecords.length > 0 || prismFitsRecords.length > 0;
     const instruments = dedupe([
@@ -616,7 +678,8 @@ export function loadTargets(): TargetRecord[] {
         ])
       ),
       ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord)),
-      ...prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord))
+      ...prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord)),
+      ...photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord))
     ];
     const noteParts = [
       viRecord?.notes ?? "",
@@ -630,6 +693,8 @@ export function loadTargets(): TargetRecord[] {
       ra: 0,
       dec: 0,
       z_spec: viRecord?.redshift ?? 1,
+      f200w: 99,
+      f444w: 99,
       status: "observed",
       instrument: instruments.join(", "),
       priority: "low",
