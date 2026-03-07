@@ -205,6 +205,7 @@ export function Spectrum1DViewer({
   const templateZRef = useRef(0);
   const templateLineByShapeIndexRef = useRef<Map<number, EmissionLine>>(new Map());
   const baseRangeRef = useRef<{ x: [number, number]; y: [number, number] } | null>(null);
+  const activeSpectrumKeyRef = useRef<string>("");
   const suppressRelayoutRef = useRef(false);
   const normalizedZ = normalizeZSpec(zSpec);
   const hasKnownRedshift = Number.isFinite(normalizedZ) && normalizedZ > 0;
@@ -389,9 +390,34 @@ export function Spectrum1DViewer({
         const yMax = y.length > 0 ? Math.max(...y) : 1;
         const ySpan = Math.max(1e-12, yMax - yMin);
         const yPad = ySpan * 0.08;
-        const baseXRange: [number, number] = [xMin, xMax];
-        const baseYRange: [number, number] = [yMin - yPad, yMax + yPad];
-        baseRangeRef.current = { x: baseXRange, y: baseYRange };
+        const computedXRange: [number, number] = [xMin, xMax];
+        const computedYRange: [number, number] = [yMin - yPad, yMax + yPad];
+        const switchedSpectrum = activeSpectrumKeyRef.current !== selectedKey;
+
+        let layoutXRange: [number, number] = computedXRange;
+        let layoutYRange: [number, number] = computedYRange;
+
+        const existingGraph = root as HTMLDivElement & {
+          layout?: { xaxis?: { range?: [number, number] }; yaxis?: { range?: [number, number] } };
+        };
+        const existingXRange = existingGraph.layout?.xaxis?.range;
+        const existingYRange = existingGraph.layout?.yaxis?.range;
+
+        if (!switchedSpectrum) {
+          if (existingXRange && Number.isFinite(existingXRange[0]) && Number.isFinite(existingXRange[1])) {
+            layoutXRange = [existingXRange[0], existingXRange[1]];
+          } else if (baseRangeRef.current) {
+            layoutXRange = baseRangeRef.current.x;
+          }
+          if (existingYRange && Number.isFinite(existingYRange[0]) && Number.isFinite(existingYRange[1])) {
+            layoutYRange = [existingYRange[0], existingYRange[1]];
+          } else if (baseRangeRef.current) {
+            layoutYRange = baseRangeRef.current.y;
+          }
+        } else {
+          baseRangeRef.current = { x: computedXRange, y: computedYRange };
+          activeSpectrumKeyRef.current = selectedKey;
+        }
         const overlayZ = templateZRef.current;
         const canShowOverlay = showLines && Number.isFinite(overlayZ) && overlayZ > -0.999;
 
@@ -454,14 +480,14 @@ export function Spectrum1DViewer({
             gridcolor: "#d8ece6",
             zeroline: false,
             autorange: false,
-            range: baseXRange
+            range: layoutXRange
           },
           yaxis: {
             title: `Flux (${currentPayload.meta.flux_unit})`,
             gridcolor: "#d8ece6",
             zeroline: false,
             autorange: false,
-            range: baseYRange
+            range: layoutYRange
           },
           legend: { orientation: "h", y: 1.03, x: 0 },
           shapes: lineShapes,
