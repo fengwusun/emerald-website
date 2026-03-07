@@ -47,20 +47,25 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") ?? "";
   const ipAddress = extractClientIp(request.headers);
 
-  const saved = await appendRedshiftSubmission(
-    {
-      ...parsedBody,
-      emerald_id: matchedTarget.emerald_id,
-      source_name: matchedTarget.name,
-      source_id: sourceId
-    },
-    {
-      ipAddress,
-      userAgent
-    }
-  );
+  try {
+    const saved = await appendRedshiftSubmission(
+      {
+        ...parsedBody,
+        emerald_id: matchedTarget.emerald_id,
+        source_name: matchedTarget.name,
+        source_id: sourceId
+      },
+      {
+        ipAddress,
+        userAgent
+      }
+    );
 
-  return NextResponse.json({ ok: true, submission: saved }, { status: 201 });
+    return NextResponse.json({ ok: true, submission: saved }, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to store submission";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function GET(request: NextRequest) {

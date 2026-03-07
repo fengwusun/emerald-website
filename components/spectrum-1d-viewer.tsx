@@ -574,7 +574,14 @@ export function Spectrum1DViewer({
           spectrum_asset_key: selectedKey || undefined
         })
       });
-      const result = (await response.json()) as { error?: string; submission?: { submitted_at: string } };
+      const contentType = response.headers.get("content-type") || "";
+      let result: { error?: string; submission?: { submitted_at: string } } = {};
+      if (contentType.includes("application/json")) {
+        result = (await response.json()) as { error?: string; submission?: { submitted_at: string } };
+      } else {
+        const text = await response.text();
+        result = { error: text || `Request failed with status ${response.status}` };
+      }
       if (!response.ok) {
         throw new Error(result.error || "Failed to submit redshift");
       }
