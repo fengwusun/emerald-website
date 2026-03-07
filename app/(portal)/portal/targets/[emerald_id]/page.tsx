@@ -12,6 +12,9 @@ function isImageAssetPath(pathname: string): boolean {
 
 function ancillaryTagLabel(assetType: string, storageKey: string): string {
   const key = storageKey.toLowerCase();
+  if (key.includes("jades_photometry/")) {
+    return "Photometry";
+  }
   if (assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(key)) {
     return "spec-plot";
   }
@@ -19,6 +22,10 @@ function ancillaryTagLabel(assetType: string, storageKey: string): string {
     return "spec-fits";
   }
   return assetType;
+}
+
+function isSpecPlotAsset(assetType: string, storageKey: string): boolean {
+  return assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(storageKey.toLowerCase());
 }
 
 export default async function TargetDetailPage({
@@ -139,6 +146,7 @@ export default async function TargetDetailPage({
               <article
                 key={`${asset.asset_type}-${asset.storage_key}-${asset.spectrum_profile ?? ""}`}
                 className="card"
+                style={{ padding: "0.75rem 0.9rem" }}
               >
                 <p>
                   <span className="tag">{ancillaryTagLabel(asset.asset_type, asset.storage_key)}</span> {asset.label}
@@ -146,7 +154,7 @@ export default async function TargetDetailPage({
                 <p className="muted">Storage key: {asset.storage_key}</p>
                 {asset.preview_url ? (
                   <div className="grid">
-                    <p>
+                    <p style={{ margin: "0.15rem 0" }}>
                       <a href={withBasePathForApiUrl(asset.preview_url)} target="_blank" rel="noreferrer">
                         {/\.fits$/i.test(asset.storage_key) ? "Download FITS" : "Preview"}
                       </a>
@@ -155,14 +163,25 @@ export default async function TargetDetailPage({
                       (asset.asset_type === "spectrum" &&
                         asset.preview_url &&
                         isImageAssetPath(asset.preview_url))) ? (
-                      <Image
-                        src={withBasePathForApiUrl(asset.preview_url)}
-                        alt={`${target.emerald_id} ${asset.label}`}
-                        width={520}
-                        height={520}
-                        unoptimized
-                        style={{ width: "100%", maxWidth: "520px", height: "auto", borderRadius: "8px", border: "1px solid #d8e0e3" }}
-                      />
+                      (() => {
+                        const isSpecPlot = isSpecPlotAsset(asset.asset_type, asset.storage_key);
+                        return (
+                          <Image
+                            src={withBasePathForApiUrl(asset.preview_url)}
+                            alt={`${target.emerald_id} ${asset.label}`}
+                            width={isSpecPlot ? 1100 : 320}
+                            height={isSpecPlot ? 700 : 320}
+                            unoptimized
+                            style={{
+                              width: isSpecPlot ? "100%" : "min(320px, 100%)",
+                              maxWidth: isSpecPlot ? "100%" : "320px",
+                              height: "auto",
+                              borderRadius: "8px",
+                              border: "1px solid #d8e0e3"
+                            }}
+                          />
+                        );
+                      })()
                     ) : null}
                   </div>
                 ) : null}

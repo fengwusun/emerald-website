@@ -33,6 +33,8 @@ export const RawTargetRowSchema = z.object({
   ra: z.coerce.number(),
   dec: z.coerce.number(),
   z_spec: z.coerce.number().nonnegative(),
+  f200w: z.coerce.number().default(99),
+  f444w: z.coerce.number().default(99),
   status: z.string().min(1),
   instrument: z.string().default(""),
   priority: z.enum(["high", "medium", "low"]),

@@ -8,7 +8,7 @@ import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
-type SortField = "name" | "z_spec" | "status" | "instrument" | "priority" | "assets";
+type SortField = "name" | "z_spec" | "f444w" | "status" | "instrument" | "priority" | "assets";
 
 type FilterState = {
   query: string;
@@ -40,7 +40,7 @@ const DEFAULT_FILTERS: FilterState = {
 
 const INSTRUMENT_OPTIONS = ["G140M/F070LP", "PRISM", "G395M/F290LP"] as const;
 const MULTI_VALUE_DELIMITER = "\n";
-const SORT_FIELDS: SortField[] = ["name", "z_spec", "status", "instrument", "priority", "assets"];
+const SORT_FIELDS: SortField[] = ["name", "z_spec", "f444w", "status", "instrument", "priority", "assets"];
 const PAGE_SIZE_OPTIONS = new Set([25, 50, 100]);
 
 function parseSelectedTags(value: string): string[] {
@@ -155,6 +155,13 @@ function normalizedZSpec(value: number): number {
 function formatZSpec(value: number): string {
   const normalized = normalizedZSpec(value);
   return normalized === -1 ? "-1" : normalized.toFixed(2);
+}
+
+function formatMagnitude(value: number): string {
+  if (!Number.isFinite(value) || value >= 99) {
+    return "99";
+  }
+  return value.toFixed(2);
 }
 
 function normalizedRaDeltaDeg(delta: number): number {
@@ -407,6 +414,9 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
 
       if (sortField === "z_spec") {
         return (normalizedZSpec(a.z_spec) - normalizedZSpec(b.z_spec)) * dir;
+      }
+      if (sortField === "f444w") {
+        return (a.f444w - b.f444w) * dir;
       }
       if (sortField === "assets") {
         return (a.ancillary_assets.length - b.ancillary_assets.length) * dir;
@@ -856,6 +866,9 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                 <button onClick={() => toggleSort("z_spec")}>z_spec {sortGlyph("z_spec")}</button>
               </th>
               <th>
+                <button onClick={() => toggleSort("f444w")}>F444W {sortGlyph("f444w")}</button>
+              </th>
+              <th>
                 <button onClick={() => toggleSort("status")}>Status {sortGlyph("status")}</button>
               </th>
               <th>
@@ -913,6 +926,7 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                     </span>
                   </td>
                   <td>{formatZSpec(target.z_spec)}</td>
+                  <td>{formatMagnitude(target.f444w)}</td>
                   <td>
                     {observationModes.length > 0 ? (
                       <div style={{ display: "flex", gap: "0.28rem", flexWrap: "wrap" }}>
