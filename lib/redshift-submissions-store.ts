@@ -22,6 +22,44 @@ export type StoredRedshiftSubmission = {
   user_agent: string;
 };
 
+function toStoredSubmission(row: unknown): StoredRedshiftSubmission | null {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+  const record = row as Record<string, unknown>;
+  const sourceName = normalizeText(typeof record.source_name === "string" ? record.source_name : "");
+  const emeraldId = normalizeText(typeof record.emerald_id === "string" ? record.emerald_id : "");
+  const submittedAt = normalizeText(typeof record.submitted_at === "string" ? record.submitted_at : "");
+  const zBestRaw = Number(record.z_best);
+  if (!sourceName || !submittedAt || !Number.isFinite(zBestRaw)) {
+    return null;
+  }
+
+  const selectedLineIds = Array.isArray(record.selected_line_ids)
+    ? record.selected_line_ids.filter((value): value is string => typeof value === "string")
+    : [];
+  const confidenceRaw = normalizeText(typeof record.confidence === "string" ? record.confidence : "");
+  const confidence: StoredRedshiftSubmission["confidence"] =
+    confidenceRaw === "low" || confidenceRaw === "medium" || confidenceRaw === "high" ? confidenceRaw : "";
+
+  return {
+    id: normalizeText(typeof record.id === "string" ? record.id : "") || `legacy-${submittedAt}-${sourceName}`,
+    submitted_at: submittedAt,
+    source_name: sourceName,
+    emerald_id: emeraldId,
+    source_id: normalizeText(typeof record.source_id === "string" ? record.source_id : ""),
+    z_best: Math.round(zBestRaw * 1e3) / 1e3,
+    selected_line_ids: selectedLineIds,
+    confidence,
+    reporter_name: normalizeText(typeof record.reporter_name === "string" ? record.reporter_name : ""),
+    reporter_email: normalizeText(typeof record.reporter_email === "string" ? record.reporter_email : ""),
+    comment: normalizeText(typeof record.comment === "string" ? record.comment : ""),
+    spectrum_asset_key: normalizeText(typeof record.spectrum_asset_key === "string" ? record.spectrum_asset_key : ""),
+    ip_hash: normalizeText(typeof record.ip_hash === "string" ? record.ip_hash : ""),
+    user_agent: normalizeText(typeof record.user_agent === "string" ? record.user_agent : "")
+  };
+}
+
 function normalizeText(value: string | undefined): string {
   return (value ?? "").trim();
 }
@@ -79,7 +117,7 @@ export async function readRedshiftSubmissions(): Promise<StoredRedshiftSubmissio
       .filter((line) => line.length > 0)
       .map((line) => {
         try {
-          return JSON.parse(line) as StoredRedshiftSubmission;
+          return toStoredSubmission(JSON.parse(line));
         } catch {
           return null;
         }

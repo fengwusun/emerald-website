@@ -29,7 +29,9 @@ export default function RootLayout({
               <Link href={withBasePath("/team")}>Team</Link>
               <Link href={withBasePath("/contact-data-policy")}>Data Policy</Link>
               <Link href={withBasePath("/science-projects")}>Science Projects</Link>
-              <Link href={withBasePath("/portal/targets")}>Portal</Link>
+              <Link className="data-portal-link" href={withBasePath("/portal/targets")}>
+                Data Portal
+              </Link>
             </nav>
           </div>
         </header>
