@@ -1,0 +1,13 @@
+services:
+  emerald:
+    build: .
+    container_name: emerald-web
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - PORT=3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - /opt/emerald/images:/opt/emerald/images:ro
