@@ -561,7 +561,7 @@ export function Spectrum1DViewer({
     try {
       const response = await fetch(withBasePath("/api/redshift-submissions"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           emerald_id: emeraldId,
           source_name: sourceName,
@@ -574,16 +574,17 @@ export function Spectrum1DViewer({
           spectrum_asset_key: selectedKey || undefined
         })
       });
-      const contentType = response.headers.get("content-type") || "";
+      const raw = await response.text();
       let result: { error?: string; submission?: { submitted_at: string } } = {};
-      if (contentType.includes("application/json")) {
-        result = (await response.json()) as { error?: string; submission?: { submitted_at: string } };
-      } else {
-        const text = await response.text();
-        result = { error: text || `Request failed with status ${response.status}` };
+      if (raw.trim().length > 0) {
+        try {
+          result = JSON.parse(raw) as { error?: string; submission?: { submitted_at: string } };
+        } catch {
+          result = { error: raw };
+        }
       }
       if (!response.ok) {
-        throw new Error(result.error || "Failed to submit redshift");
+        throw new Error(result.error || `Failed to submit redshift (HTTP ${response.status})`);
       }
       setSubmitMessage(
         `Saved z=${templateZ.toFixed(3)} for ${sourceName} at ${new Date(
