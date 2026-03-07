@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { readRedshiftSubmissions } from "@/lib/redshift-submissions-store";
+import { withBasePath } from "@/lib/base-path";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function RedshiftSubmissionsPage() {
         Append-only user submissions from the interactive spectrum viewer. Times shown in UTC.
       </p>
       <p>
-        <Link href="/portal/targets">← Back to target catalog</Link>
+        <Link href={withBasePath("/portal/targets")}>← Back to target catalog</Link>
       </p>
 
       {submissions.length === 0 ? (

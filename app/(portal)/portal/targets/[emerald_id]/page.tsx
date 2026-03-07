@@ -53,7 +53,7 @@ export default async function TargetDetailPage({
   return (
     <div className="grid">
       <p>
-        <Link href={backHref}>← Back to catalog</Link>
+        <Link href={withBasePath(backHref)}>← Back to catalog</Link>
       </p>
       <h1>{target.name}</h1>
       <p className="muted">{target.emerald_id}</p>
