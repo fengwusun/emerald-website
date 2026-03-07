@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/base-path";
 
 export default function ProgramPage() {
   return (
@@ -132,7 +133,7 @@ export default function ProgramPage() {
             download links through the portal.
           </p>
           <p>
-            <Link href="/portal/targets">Open Portal</Link>
+            <Link href={withBasePath("/portal/targets")}>Open Portal</Link>
           </p>
         </article>
       </section>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/base-path";
 
 export default function PortalHomePage() {
   return (
@@ -9,7 +10,7 @@ export default function PortalHomePage() {
           Use the portal to search cross-program targets and inspect per-object
           metadata plus ancillary previews.
         </p>
-        <p><Link href="/portal/targets">Go to Target Catalog</Link></p>
+        <p><Link href={withBasePath("/portal/targets")}>Go to Target Catalog</Link></p>
       </section>
     </div>
   );

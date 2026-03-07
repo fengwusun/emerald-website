@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { withBasePathForApiUrl } from "@/lib/base-path";
+import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import type { TargetRecord } from "@/lib/schemas";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 
@@ -883,7 +883,11 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                 <tr key={target.emerald_id}>
                   <td>
                     <span className="jades-cell">
-                      <Link href={`/portal/targets/${target.emerald_id}?next=${encodeURIComponent(currentCatalogUrl)}`}>
+                      <Link
+                        href={withBasePath(
+                          `/portal/targets/${target.emerald_id}?next=${encodeURIComponent(currentCatalogUrl)}`
+                        )}
+                      >
                         {target.name}
                       </Link>
                       {jadesId ? (
