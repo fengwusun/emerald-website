@@ -266,21 +266,22 @@ th button {
 .science-projects-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   align-items: stretch;
 }
 
 .science-project-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 2rem;
   height: 100%;
   padding: 1.15rem;
+  overflow: hidden;
 }
 
 .science-project-card__header {
-  min-height: 4.8rem;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
 }
 
@@ -305,6 +306,8 @@ th button {
   margin: 0.8rem 0 0;
   color: var(--ink);
   line-height: 1.55;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .science-project-card__meta {
