@@ -21,6 +21,7 @@ export default function PortalLayout({
       <nav className="card nav" aria-label="Portal navigation">
         <Link href="/portal">Overview</Link>
         <Link href="/portal/targets">Targets</Link>
+        <Link href="/portal/redshift-submissions">Redshift Reports</Link>
         <a href={withBasePath("/fitsmap/index.html")} target="_blank" rel="noreferrer">
           FitsMap
         </a>

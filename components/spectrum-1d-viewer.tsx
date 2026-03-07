@@ -87,6 +87,14 @@ const EMISSION_LINES: EmissionLine[] = [
   { id: "pf8", name: "Pf8", restUm: 3.74052, color: "rgba(225,157,69,0.42)" },
   { id: "bralpha", name: "Brα", restUm: 4.05223, color: "rgba(233,168,68,0.42)" }
 ];
+const COMMON_TRUST_LINE_IDS = new Set<string>([
+  "lya_1216",
+  "hbeta",
+  "oiii_5008",
+  "halpha",
+  "hei_10833",
+  "paalpha"
+]);
 
 let plotlyScriptPromise: Promise<void> | null = null;
 
@@ -125,7 +133,7 @@ function normalizeZSpec(value: number): number {
 }
 
 function roundRedshift(value: number): number {
-  return Math.round(value * 1e4) / 1e4;
+  return Math.round(value * 1e3) / 1e3;
 }
 
 function formatLineLabel(line: EmissionLine): string {
@@ -135,18 +143,34 @@ function formatLineLabel(line: EmissionLine): string {
   return `${line.name} ${Number((line.restUm * 1e4).toPrecision(4))}`;
 }
 
-export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOption[]; zSpec: number }) {
+export function Spectrum1DViewer({
+  assets,
+  zSpec,
+  sourceName,
+  emeraldId
+}: {
+  assets: SpectrumAssetOption[];
+  zSpec: number;
+  sourceName: string;
+  emeraldId: string;
+}) {
   const [selectedKey, setSelectedKey] = useState(assets[0]?.storageKey ?? "");
   const [payload, setPayload] = useState<SpectrumResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plotReady, setPlotReady] = useState(false);
   const [showLines, setShowLines] = useState(true);
-  const [selectedLineIds, setSelectedLineIds] = useState<string[]>(EMISSION_LINES.map((line) => line.id));
+  const [displayLineIds, setDisplayLineIds] = useState<string[]>(EMISSION_LINES.map((line) => line.id));
+  const [trustedLineIds, setTrustedLineIds] = useState<string[]>([]);
   const [templateZ, setTemplateZ] = useState(0);
   const [templateObservedAnchor, setTemplateObservedAnchor] = useState<number | null>(null);
   const [templateObservedLineName, setTemplateObservedLineName] = useState<string>("");
   const [zInput, setZInput] = useState("0");
+  const [reporterName, setReporterName] = useState("");
+  const [comment, setComment] = useState("");
+  const [submitPending, setSubmitPending] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const plotRef = useRef<HTMLDivElement | null>(null);
   const templateZRef = useRef(0);
   const templateLineByShapeIndexRef = useRef<Map<number, EmissionLine>>(new Map());
@@ -154,6 +178,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
   const suppressRelayoutRef = useRef(false);
   const normalizedZ = normalizeZSpec(zSpec);
   const hasKnownRedshift = Number.isFinite(normalizedZ) && normalizedZ > 0;
+  const effectiveConfidence: "medium" | "high" = trustedLineIds.length >= 2 ? "high" : "medium";
 
   const selectedAssetLabel = useMemo(
     () => assets.find((asset) => asset.storageKey === selectedKey)?.label ?? "",
@@ -163,7 +188,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
   useEffect(() => {
     const initialZ = hasKnownRedshift ? roundRedshift(normalizedZ) : 1;
     setTemplateZ(initialZ);
-    setZInput(initialZ.toFixed(4));
+    setZInput(initialZ.toFixed(3));
     setTemplateObservedAnchor(null);
     setTemplateObservedLineName("");
   }, [hasKnownRedshift, normalizedZ, selectedKey]);
@@ -326,7 +351,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
         const canShowOverlay = showLines && Number.isFinite(overlayZ) && overlayZ > -0.999;
 
         const visibleLines = canShowOverlay
-          ? EMISSION_LINES.filter((line) => selectedLineIds.includes(line.id))
+          ? EMISSION_LINES.filter((line) => displayLineIds.includes(line.id))
               .map((line) => ({ line, obsUm: line.restUm * (1 + overlayZ) }))
               .filter(({ obsUm }) => obsUm >= xMin && obsUm <= xMax)
               .sort(
@@ -339,6 +364,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
         const templateLineByShapeIndex = new Map<number, EmissionLine>();
         const lineShapes = visibleLines.map(({ line, obsUm }, index) => {
           const shapeIndex = index;
+          const isTrusted = trustedLineIds.includes(line.id);
           templateLineByShapeIndex.set(shapeIndex, line);
           return {
             type: "line",
@@ -348,23 +374,26 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
             y1: yMax,
             line: {
               color: line.color,
-              width: 2.2,
+              width: isTrusted ? 2.8 : 2.2,
               dash: "solid"
             }
           };
         });
         templateLineByShapeIndexRef.current = templateLineByShapeIndex;
 
-        const lineAnnotations = visibleLines.map(({ line, obsUm }) => ({
-          x: obsUm,
-          y: 0.95,
-          yref: "paper",
-          yanchor: "top",
-          text: `<span style="text-shadow:-2px -2px 0 #fff,2px -2px 0 #fff,-2px 2px 0 #fff,2px 2px 0 #fff">${formatLineLabel(line)}</span>`,
-          textangle: -90,
-          showarrow: false,
-          font: { size: 11, color: "#2d4340" }
-        }));
+        const lineAnnotations = visibleLines.map(({ line, obsUm }) => {
+          const isTrusted = trustedLineIds.includes(line.id);
+          return {
+            x: obsUm,
+            y: 0.95,
+            yref: "paper",
+            yanchor: "top",
+            text: `<span style="text-shadow:-2px -2px 0 #fff,2px -2px 0 #fff,-2px 2px 0 #fff,2px 2px 0 #fff;${isTrusted ? "font-weight:700;" : ""}">${formatLineLabel(line)}</span>`,
+            textangle: -90,
+            showarrow: false,
+            font: { size: isTrusted ? 12 : 11, color: "#111111" }
+          };
+        });
 
         const layout = {
           title: {
@@ -444,7 +473,7 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
             setTemplateObservedLineName(movedLine.name);
             setTemplateObservedAnchor(nextObserved);
             setTemplateZ(nextZ);
-            setZInput(nextZ.toFixed(4));
+            setZInput(nextZ.toFixed(3));
         };
         if (graphDiv.on) {
           graphDiv.on("plotly_relayouting", handleTemplateDragEvent);
@@ -490,11 +519,12 @@ export function Spectrum1DViewer({ assets, zSpec }: { assets: SpectrumAssetOptio
     payload,
     applyTemplatePositions,
     selectedAssetLabel,
-    selectedLineIds,
+    displayLineIds,
+    trustedLineIds,
     showLines
   ]);
 
-function resetAxes() {
+  function resetAxes() {
     if (!plotRef.current || !window.Plotly) return;
     const base = baseRangeRef.current;
     if (!base) return;
@@ -513,6 +543,54 @@ function resetAxes() {
       });
   }
 
+  async function submitBestRedshift() {
+    if (!payload) {
+      setSubmitError("Spectrum is not loaded yet.");
+      setSubmitMessage(null);
+      return;
+    }
+    if (!Number.isFinite(templateZ)) {
+      setSubmitError("Invalid redshift value.");
+      setSubmitMessage(null);
+      return;
+    }
+
+    setSubmitPending(true);
+    setSubmitError(null);
+    setSubmitMessage(null);
+    try {
+      const response = await fetch(withBasePath("/api/redshift-submissions"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emerald_id: emeraldId,
+          source_name: sourceName,
+          source_id: payload.meta.source_id,
+          z_best: templateZ,
+          selected_line_ids: trustedLineIds,
+          confidence: effectiveConfidence,
+          reporter_name: reporterName || undefined,
+          comment: comment || undefined,
+          spectrum_asset_key: selectedKey || undefined
+        })
+      });
+      const result = (await response.json()) as { error?: string; submission?: { submitted_at: string } };
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to submit redshift");
+      }
+      setSubmitMessage(
+        `Saved z=${templateZ.toFixed(3)} for ${sourceName} at ${new Date(
+          result.submission?.submitted_at ?? Date.now()
+        ).toLocaleString()}.`
+      );
+      setComment("");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit redshift");
+    } finally {
+      setSubmitPending(false);
+    }
+  }
+
   return (
     <section className="card">
       <h2>Interactive 1D Spectrum</h2>
@@ -523,7 +601,7 @@ function resetAxes() {
 
       <section className="card" style={{ background: "#f9fffc", boxShadow: "none" }}>
         <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
-          <span className="muted">Emission lines at z={templateZ.toFixed(4)}</span>
+          <span className="muted">Emission lines at z={templateZ.toFixed(3)}</span>
           <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
             <input
               type="checkbox"
@@ -536,17 +614,17 @@ function resetAxes() {
           <button
             type="button"
             className="secondary"
-            onClick={() => setSelectedLineIds(EMISSION_LINES.map((line) => line.id))}
+            onClick={() => setDisplayLineIds(EMISSION_LINES.map((line) => line.id))}
           >
             Select all
           </button>
-          <button type="button" className="secondary" onClick={() => setSelectedLineIds([])}>
+          <button type="button" className="secondary" onClick={() => setDisplayLineIds([])}>
             Clear
           </button>
         </div>
-        <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.55rem 0.9rem" }}>
+        <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.45rem 0.75rem" }}>
           {EMISSION_LINES.map((line) => {
-            const checked = selectedLineIds.includes(line.id);
+            const checked = displayLineIds.includes(line.id);
             return (
               <label key={line.id} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
                 <input
@@ -554,10 +632,10 @@ function resetAxes() {
                   checked={checked}
                   onChange={(event) => {
                     if (event.target.checked) {
-                      setSelectedLineIds((prev) => (prev.includes(line.id) ? prev : [...prev, line.id]));
+                      setDisplayLineIds((prev) => (prev.includes(line.id) ? prev : [...prev, line.id]));
                       return;
                     }
-                    setSelectedLineIds((prev) => prev.filter((id) => id !== line.id));
+                    setDisplayLineIds((prev) => prev.filter((id) => id !== line.id));
                   }}
                   style={{ width: "auto" }}
                 />
@@ -574,13 +652,13 @@ function resetAxes() {
         <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
           <strong>Redshift Measure Tool</strong>
           <span className="tag" style={{ background: "#eef4ff", borderColor: "#cad8ff" }}>
-            z_template = {templateZ.toFixed(4)}
+            z_template = {templateZ.toFixed(3)}
           </span>
           <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
             Input z
             <input
               type="number"
-              step="0.0001"
+              step="0.001"
               value={zInput}
               onChange={(event) => {
                 const raw = event.target.value;
@@ -590,7 +668,7 @@ function resetAxes() {
                   const rounded = roundRedshift(parsed);
                   applyTemplatePositions(rounded);
                   setTemplateZ(rounded);
-                  setZInput(rounded.toFixed(4));
+                  setZInput(rounded.toFixed(3));
                   setTemplateObservedAnchor(null);
                   setTemplateObservedLineName("");
                 }
@@ -642,6 +720,82 @@ function resetAxes() {
           background: "#fff"
         }}
       />
+
+      <section className="card" style={{ background: "#f8fcff", boxShadow: "none" }}>
+        <h3 style={{ marginTop: 0 }}>Report Best Redshift</h3>
+        <div style={{ display: "grid", gap: "0.6rem", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+          <label>
+            Reporter name
+            <input
+              type="text"
+              value={reporterName}
+              onChange={(event) => setReporterName(event.target.value)}
+              placeholder="Optional"
+            />
+          </label>
+          <div>
+            <span className="muted">Confidence</span>
+            <div>
+              <span className="tag" style={{ marginTop: "0.2rem", display: "inline-flex" }}>
+                {effectiveConfidence}
+              </span>
+            </div>
+          </div>
+        </div>
+        <p className="muted" style={{ marginBottom: "0.35rem" }}>
+          Trusted emission lines (2+ selected sets confidence to high):
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem 0.75rem" }}>
+          {EMISSION_LINES.map((line) => {
+            const checked = trustedLineIds.includes(line.id);
+            const isCommon = COMMON_TRUST_LINE_IDS.has(line.id);
+            return (
+              <label key={line.id} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setTrustedLineIds((prev) => (prev.includes(line.id) ? prev : [...prev, line.id]));
+                      return;
+                    }
+                    setTrustedLineIds((prev) => prev.filter((id) => id !== line.id));
+                  }}
+                  style={{ width: "auto" }}
+                />
+                <span
+                  className="tag"
+                  style={{ borderColor: "#b6d8cc", background: "#eefaf5", fontWeight: isCommon ? 700 : 500 }}
+                >
+                  {formatLineLabel(line)}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <label>
+          Comment
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            rows={3}
+            placeholder="Optional notes, e.g., AGN, absorption features, Balmer jump/break, line asymmetry, low S/N."
+          />
+        </label>
+        <p className="muted" style={{ marginTop: "-0.2rem", marginBottom: 0 }}>
+          Example notes: AGN candidate, absorption-dominated, Balmer jump/break seen, Lyα asymmetric.
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <button type="button" onClick={() => void submitBestRedshift()} disabled={submitPending || !payload}>
+            {submitPending ? "Submitting..." : "Submit Best z"}
+          </button>
+          <span className="tag" style={{ background: "#eef4ff", borderColor: "#cad8ff" }}>
+            z_submit = {templateZ.toFixed(3)}
+          </span>
+        </div>
+        {submitMessage ? <p className="muted" style={{ marginBottom: 0 }}>{submitMessage}</p> : null}
+        {submitError ? <p className="notice" style={{ marginBottom: 0 }}>{submitError}</p> : null}
+      </section>
     </section>
   );
 }

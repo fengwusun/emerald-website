@@ -7,6 +7,7 @@ import { getMediaBaseDir } from "@/lib/media-path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const VI_CATALOG_PATH = path.join(DATA_DIR, "DIVER_grating_vi.csv");
+const REDSHIFT_SUBMISSIONS_PATH = path.join(DATA_DIR, "redshift-submissions.ndjson");
 const EMERALD_PROGRAM_ID = "7935";
 const EMERALD_INSTRUMENT = "G395M/F290LP";
 const DIVER_GRATING_INSTRUMENT = "G140M/F070LP";
@@ -51,6 +52,13 @@ type PrismFitsAssetRecord = {
 type ObservationMode = {
   instrument: string;
   status: string;
+};
+
+type RedshiftSubmissionRecord = {
+  source_name: string;
+  emerald_id: string;
+  z_best: number;
+  submitted_at: string;
 };
 
 function dedupe(values: string[]): string[] {
@@ -303,6 +311,66 @@ function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
   return catalogBySourceId;
 }
 
+function loadLatestSubmittedRedshifts(): {
+  bySourceName: Map<string, number>;
+  byEmeraldId: Map<string, number>;
+} {
+  if (!fs.existsSync(REDSHIFT_SUBMISSIONS_PATH)) {
+    return { bySourceName: new Map(), byEmeraldId: new Map() };
+  }
+
+  const raw = fs.readFileSync(REDSHIFT_SUBMISSIONS_PATH, "utf8");
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const latestBySourceName = new Map<string, { submittedAt: string; zBest: number }>();
+  const latestByEmeraldId = new Map<string, { submittedAt: string; zBest: number }>();
+
+  for (const line of lines) {
+    let parsed: Partial<RedshiftSubmissionRecord> | null = null;
+    try {
+      parsed = JSON.parse(line) as Partial<RedshiftSubmissionRecord>;
+    } catch {
+      continue;
+    }
+    if (!parsed) continue;
+    const sourceName = (parsed.source_name ?? "").trim();
+    const emeraldId = (parsed.emerald_id ?? "").trim();
+    const submittedAt = (parsed.submitted_at ?? "").trim();
+    const zBest = Number(parsed.z_best);
+    if (!submittedAt || !Number.isFinite(zBest)) {
+      continue;
+    }
+
+    if (sourceName) {
+      const existing = latestBySourceName.get(sourceName);
+      if (!existing || submittedAt >= existing.submittedAt) {
+        latestBySourceName.set(sourceName, { submittedAt, zBest });
+      }
+    }
+
+    if (emeraldId) {
+      const existing = latestByEmeraldId.get(emeraldId);
+      if (!existing || submittedAt >= existing.submittedAt) {
+        latestByEmeraldId.set(emeraldId, { submittedAt, zBest });
+      }
+    }
+  }
+
+  const bySourceName = new Map<string, number>();
+  const byEmeraldId = new Map<string, number>();
+  for (const [key, value] of latestBySourceName.entries()) {
+    bySourceName.set(key, value.zBest);
+  }
+  for (const [key, value] of latestByEmeraldId.entries()) {
+    byEmeraldId.set(key, value.zBest);
+  }
+
+  return { bySourceName, byEmeraldId };
+}
+
 export function loadTargets(): TargetRecord[] {
   const csvPath = path.join(DATA_DIR, "targets.csv");
   const csvRaw = fs.readFileSync(csvPath, "utf8");
@@ -436,7 +504,21 @@ export function loadTargets(): TargetRecord[] {
     });
   }
 
-  return targets;
+  const latestSubmitted = loadLatestSubmittedRedshifts();
+  const targetsWithSubmittedRedshifts = targets.map((target) => {
+    const byId = latestSubmitted.byEmeraldId.get(target.emerald_id);
+    const byName = latestSubmitted.bySourceName.get(target.name);
+    const nextZ = byId ?? byName;
+    if (typeof nextZ !== "number" || !Number.isFinite(nextZ)) {
+      return target;
+    }
+    return {
+      ...target,
+      z_spec: nextZ
+    };
+  });
+
+  return targetsWithSubmittedRedshifts;
 }
 
 export function loadCoiMembers(): CoiMember[] {
