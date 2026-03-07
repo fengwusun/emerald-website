@@ -184,6 +184,10 @@ export function Spectrum1DViewer({
     () => assets.find((asset) => asset.storageKey === selectedKey)?.label ?? "",
     [assets, selectedKey]
   );
+  const trustedLineOptions = useMemo(
+    () => [...EMISSION_LINES].sort((a, b) => a.restUm - b.restUm),
+    []
+  );
 
   useEffect(() => {
     const initialZ = hasKnownRedshift ? roundRedshift(normalizedZ) : 1;
@@ -770,7 +774,7 @@ export function Spectrum1DViewer({
           Trusted emission lines (2+ selected sets confidence to high):
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem 0.75rem" }}>
-          {EMISSION_LINES.map((line) => {
+          {trustedLineOptions.map((line) => {
             const checked = trustedLineIds.includes(line.id);
             const isCommon = COMMON_TRUST_LINE_IDS.has(line.id);
             return (
