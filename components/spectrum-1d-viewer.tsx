@@ -169,6 +169,50 @@ function gaussianSmooth(values: number[], sigma: number): number[] {
   return out;
 }
 
+function quantile(sortedValues: number[], q: number): number {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+  const clampedQ = Math.min(1, Math.max(0, q));
+  const idx = (sortedValues.length - 1) * clampedQ;
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) {
+    return sortedValues[lo];
+  }
+  const t = idx - lo;
+  return sortedValues[lo] * (1 - t) + sortedValues[hi] * t;
+}
+
+function percentileYRange(
+  values: number[],
+  lowerPercentile = 2.5,
+  upperPercentile = 97.5,
+  paddingFraction = 0.3
+): [number, number] {
+  const finite = values.filter((v) => Number.isFinite(v) && v !== 0);
+  if (finite.length === 0) {
+    return [-1, 1];
+  }
+
+  const sorted = [...finite].sort((a, b) => a - b);
+  const fullMin = sorted[0];
+  const fullMax = sorted[sorted.length - 1];
+  const lowerQ = Math.min(1, Math.max(0, lowerPercentile / 100));
+  const upperQ = Math.min(1, Math.max(0, upperPercentile / 100));
+  let lo = quantile(sorted, lowerQ);
+  let hi = quantile(sorted, upperQ);
+
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) {
+    lo = fullMin;
+    hi = fullMax;
+  }
+
+  const span = Math.max(1e-20, hi - lo);
+  const pad = span * paddingFraction;
+  return [lo - pad, hi + pad];
+}
+
 export function Spectrum1DViewer({
   assets,
   zSpec,
@@ -200,7 +244,7 @@ export function Spectrum1DViewer({
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [smoothingEnabled, setSmoothingEnabled] = useState(false);
-  const [smoothingSigmaInput, setSmoothingSigmaInput] = useState("1.5");
+  const [smoothingSigmaInput, setSmoothingSigmaInput] = useState("2.0");
   const plotRef = useRef<HTMLDivElement | null>(null);
   const templateZRef = useRef(0);
   const templateLineByShapeIndexRef = useRef<Map<number, EmissionLine>>(new Map());
@@ -210,6 +254,7 @@ export function Spectrum1DViewer({
   const normalizedZ = normalizeZSpec(zSpec);
   const hasKnownRedshift = Number.isFinite(normalizedZ) && normalizedZ > 0;
   const effectiveConfidence: "medium" | "high" = trustedLineIds.length >= 2 ? "high" : "medium";
+  const reporterNameTrimmed = reporterName.trim();
 
   const selectedAsset = useMemo(
     () =>
@@ -255,6 +300,10 @@ export function Spectrum1DViewer({
       updates["xaxis.autorange"] = 0;
     }
     if (yRange && Number.isFinite(yRange[0]) && Number.isFinite(yRange[1])) {
+      for (const shapeIndex of templateLineByShapeIndexRef.current.keys()) {
+        updates[`shapes[${shapeIndex}].y0`] = yRange[0];
+        updates[`shapes[${shapeIndex}].y1`] = yRange[1];
+      }
       updates["yaxis.range[0]"] = yRange[0];
       updates["yaxis.range[1]"] = yRange[1];
       updates["yaxis.autorange"] = 0;
@@ -386,12 +435,8 @@ export function Spectrum1DViewer({
 
         const xMin = x.length > 0 ? Math.min(...x) : 0;
         const xMax = x.length > 0 ? Math.max(...x) : 0;
-        const yMin = y.length > 0 ? Math.min(...y) : 0;
-        const yMax = y.length > 0 ? Math.max(...y) : 1;
-        const ySpan = Math.max(1e-12, yMax - yMin);
-        const yPad = ySpan * 0.08;
         const computedXRange: [number, number] = [xMin, xMax];
-        const computedYRange: [number, number] = [yMin - yPad, yMax + yPad];
+        const computedYRange: [number, number] = percentileYRange(y, 2.5, 97.5, 0.3);
         const switchedSpectrum = activeSpectrumKeyRef.current !== selectedKey;
 
         let layoutXRange: [number, number] = computedXRange;
@@ -441,8 +486,8 @@ export function Spectrum1DViewer({
             type: "line",
             x0: obsUm,
             x1: obsUm,
-            y0: yMin,
-            y1: yMax,
+            y0: layoutYRange[0],
+            y1: layoutYRange[1],
             line: {
               color: line.color,
               width: isTrusted ? 2.8 : 2.2,
@@ -522,8 +567,16 @@ export function Spectrum1DViewer({
 
             let movedLine: EmissionLine | null = null;
             let nextObserved = Number.NaN;
+            let sawShapeYMove = false;
 
             for (const [key, raw] of Object.entries(eventData)) {
+              const yMatch = key.match(/^shapes\[(\d+)\]\.y[01]$/);
+              if (yMatch) {
+                const shapeIndex = Number(yMatch[1]);
+                if (Number.isFinite(shapeIndex) && templateMap.has(shapeIndex)) {
+                  sawShapeYMove = true;
+                }
+              }
               const match = key.match(/^shapes\[(\d+)\]\.x[01]$/);
               if (!match) continue;
               const shapeIndex = Number(match[1]);
@@ -537,7 +590,12 @@ export function Spectrum1DViewer({
               break;
             }
 
-            if (!movedLine || !Number.isFinite(nextObserved)) return;
+            if (!movedLine || !Number.isFinite(nextObserved)) {
+              if (sawShapeYMove) {
+                applyTemplatePositions(templateZRef.current);
+              }
+              return;
+            }
             const nextZ = roundRedshift(nextObserved / movedLine.restUm - 1);
             if (!Number.isFinite(nextZ)) return;
             applyTemplatePositions(nextZ);
@@ -646,6 +704,11 @@ export function Spectrum1DViewer({
       setSubmitMessage(null);
       return;
     }
+    if (!reporterNameTrimmed) {
+      setSubmitError("Reporter name is required.");
+      setSubmitMessage(null);
+      return;
+    }
 
     setSubmitPending(true);
     setSubmitError(null);
@@ -661,7 +724,7 @@ export function Spectrum1DViewer({
           z_best: templateZ,
           selected_line_ids: trustedLineIds,
           confidence: effectiveConfidence,
-          reporter_name: reporterName || undefined,
+          reporter_name: reporterNameTrimmed,
           comment: comment || undefined,
           spectrum_asset_key: selectedAsset
             ? `${selectedAsset.storageKey}${selectedAsset.profile ? `::${selectedAsset.profile}` : ""}`
@@ -857,7 +920,8 @@ export function Spectrum1DViewer({
               type="text"
               value={reporterName}
               onChange={(event) => setReporterName(event.target.value)}
-              placeholder="Optional"
+              placeholder="Required"
+              required
             />
           </label>
           <div>
@@ -913,7 +977,11 @@ export function Spectrum1DViewer({
           Example notes: AGN candidate, absorption-dominated, Balmer jump/break seen, Lyα asymmetric.
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
-          <button type="button" onClick={() => void submitBestRedshift()} disabled={submitPending || !payload}>
+          <button
+            type="button"
+            onClick={() => void submitBestRedshift()}
+            disabled={submitPending || !payload || !reporterNameTrimmed}
+          >
             {submitPending ? "Submitting..." : "Submit Best z"}
           </button>
           <span className="tag" style={{ background: "#eef4ff", borderColor: "#cad8ff" }}>
