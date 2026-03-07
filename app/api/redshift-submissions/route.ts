@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { loadTargets } from "@/lib/data";
 import { RedshiftSubmissionInputSchema } from "@/lib/schemas";
@@ -60,6 +61,10 @@ export async function POST(request: NextRequest) {
         userAgent
       }
     );
+
+    revalidatePath("/portal/targets");
+    revalidatePath(`/portal/targets/${matchedTarget.emerald_id}`);
+    revalidatePath("/portal/redshift-submissions");
 
     return NextResponse.json({ ok: true, submission: saved }, { status: 201 });
   } catch (error) {
