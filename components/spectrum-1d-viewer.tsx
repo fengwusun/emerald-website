@@ -640,9 +640,6 @@ export function Spectrum1DViewer({
 
     return () => {
       cancelled = true;
-      if (root && window.Plotly) {
-        window.Plotly.purge(root);
-      }
     };
   }, [
     payload,
@@ -655,6 +652,15 @@ export function Spectrum1DViewer({
     smoothingSigmaInput,
     selectedKey
   ]);
+
+  useEffect(() => {
+    const rootAtMount = plotRef.current;
+    return () => {
+      if (rootAtMount && window.Plotly) {
+        window.Plotly.purge(rootAtMount);
+      }
+    };
+  }, []);
 
   function resetAxes() {
     if (!plotRef.current || !window.Plotly) return;
