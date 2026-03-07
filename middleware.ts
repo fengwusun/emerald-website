@@ -37,6 +37,7 @@ export const config = {
     "/api/assets/sign",
     "/api/targets/image",
     "/api/targets/file",
+    "/api/targets/catalog",
     "/api/spectra/1d",
     "/api/redshift-submissions"
   ]

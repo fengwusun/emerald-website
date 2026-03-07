@@ -1,11 +1,7 @@
-import { Suspense } from "react";
-import { PortalTargetTable } from "@/components/portal-target-table";
-import { loadTargets } from "@/lib/data";
+import { PortalTargetCatalog } from "@/components/portal-target-catalog";
 import { withBasePath } from "@/lib/base-path";
 
 export default function PortalTargetsPage() {
-  const targets = loadTargets();
-
   return (
     <div className="grid">
       <h1>Target Catalog</h1>
@@ -20,9 +16,7 @@ export default function PortalTargetsPage() {
         </a>
         .
       </p>
-      <Suspense fallback={<p className="muted">Loading target catalog...</p>}>
-        <PortalTargetTable targets={targets} />
-      </Suspense>
+      <PortalTargetCatalog />
     </div>
   );
 }
