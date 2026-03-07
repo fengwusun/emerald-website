@@ -44,9 +44,17 @@ export default async function TargetDetailPage({
     target.observation_modes.length > 0
       ? target.observation_modes
       : target.instruments.map((instrument) => ({ instrument, status: target.status }));
-  const prismX1dAssets = target.ancillary_assets
-    .filter((asset) => /_x1d\.fits$/i.test(asset.storage_key))
-    .map((asset) => ({ storageKey: asset.storage_key, label: asset.label }));
+  const oneDSpectrumAssets = target.ancillary_assets
+    .filter(
+      (asset) =>
+        /_x1d\.fits$/i.test(asset.storage_key) ||
+        /_x1d\.json$/i.test(asset.storage_key)
+    )
+    .map((asset) => ({
+      storageKey: asset.storage_key,
+      label: asset.label,
+      profile: asset.spectrum_profile
+    }));
   const requestedNext = typeof resolvedSearchParams.next === "string" ? resolvedSearchParams.next : "";
   const backHref = requestedNext.startsWith("/portal/targets") ? requestedNext : "/portal/targets";
 
@@ -128,7 +136,10 @@ export default async function TargetDetailPage({
         ) : (
           <div className="grid">
             {target.ancillary_assets.map((asset) => (
-              <article key={`${asset.asset_type}-${asset.storage_key}`} className="card">
+              <article
+                key={`${asset.asset_type}-${asset.storage_key}-${asset.spectrum_profile ?? ""}`}
+                className="card"
+              >
                 <p>
                   <span className="tag">{ancillaryTagLabel(asset.asset_type, asset.storage_key)}</span> {asset.label}
                 </p>
@@ -161,9 +172,9 @@ export default async function TargetDetailPage({
         )}
       </section>
 
-      {prismX1dAssets.length > 0 ? (
+      {oneDSpectrumAssets.length > 0 ? (
         <Spectrum1DViewer
-          assets={prismX1dAssets}
+          assets={oneDSpectrumAssets}
           zSpec={target.z_spec}
           sourceName={target.name}
           emeraldId={target.emerald_id}

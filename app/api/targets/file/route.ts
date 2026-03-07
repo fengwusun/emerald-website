@@ -7,6 +7,10 @@ function contentTypeForExtension(ext: string): string {
   switch (ext) {
     case ".fits":
       return "application/fits";
+    case ".csv":
+      return "text/csv; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
     case ".png":
       return "image/png";
     case ".jpg":
@@ -21,7 +25,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const file = url.searchParams.get("file") ?? "";
 
-  if (!/^[-a-zA-Z0-9_./]+\.(fits|png|jpg|jpeg)$/i.test(file)) {
+  if (!/^[-a-zA-Z0-9_./]+\.(fits|csv|json|png|jpg|jpeg)$/i.test(file)) {
     return NextResponse.json({ error: "Invalid file parameter" }, { status: 400 });
   }
 

@@ -6,6 +6,7 @@ import { withBasePath } from "@/lib/base-path";
 type SpectrumAssetOption = {
   storageKey: string;
   label: string;
+  profile?: string;
 };
 
 type EmissionLine = {
@@ -143,6 +144,31 @@ function formatLineLabel(line: EmissionLine): string {
   return `${line.name} ${Number((line.restUm * 1e4).toPrecision(4))}`;
 }
 
+function gaussianSmooth(values: number[], sigma: number): number[] {
+  if (!Number.isFinite(sigma) || sigma <= 0 || values.length < 3) {
+    return values;
+  }
+  const radius = Math.max(1, Math.ceil(sigma * 3));
+  const kernel: number[] = [];
+  let sum = 0;
+  for (let i = -radius; i <= radius; i += 1) {
+    const w = Math.exp(-(i * i) / (2 * sigma * sigma));
+    kernel.push(w);
+    sum += w;
+  }
+  const normalized = kernel.map((w) => w / sum);
+  const out = new Array<number>(values.length);
+  for (let i = 0; i < values.length; i += 1) {
+    let acc = 0;
+    for (let k = -radius; k <= radius; k += 1) {
+      const idx = Math.min(values.length - 1, Math.max(0, i + k));
+      acc += values[idx] * normalized[k + radius];
+    }
+    out[i] = acc;
+  }
+  return out;
+}
+
 export function Spectrum1DViewer({
   assets,
   zSpec,
@@ -154,7 +180,9 @@ export function Spectrum1DViewer({
   sourceName: string;
   emeraldId: string;
 }) {
-  const [selectedKey, setSelectedKey] = useState(assets[0]?.storageKey ?? "");
+  const [selectedKey, setSelectedKey] = useState(
+    assets[0] ? `${assets[0].storageKey}::${assets[0].profile ?? ""}` : ""
+  );
   const [payload, setPayload] = useState<SpectrumResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +199,8 @@ export function Spectrum1DViewer({
   const [submitPending, setSubmitPending] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [smoothingEnabled, setSmoothingEnabled] = useState(false);
+  const [smoothingSigmaInput, setSmoothingSigmaInput] = useState("1.5");
   const plotRef = useRef<HTMLDivElement | null>(null);
   const templateZRef = useRef(0);
   const templateLineByShapeIndexRef = useRef<Map<number, EmissionLine>>(new Map());
@@ -180,10 +210,13 @@ export function Spectrum1DViewer({
   const hasKnownRedshift = Number.isFinite(normalizedZ) && normalizedZ > 0;
   const effectiveConfidence: "medium" | "high" = trustedLineIds.length >= 2 ? "high" : "medium";
 
-  const selectedAssetLabel = useMemo(
-    () => assets.find((asset) => asset.storageKey === selectedKey)?.label ?? "",
+  const selectedAsset = useMemo(
+    () =>
+      assets.find((asset) => `${asset.storageKey}::${asset.profile ?? ""}` === selectedKey) ??
+      null,
     [assets, selectedKey]
   );
+  const selectedAssetLabel = selectedAsset?.label ?? "";
   const trustedLineOptions = useMemo(
     () => [...EMISSION_LINES].sort((a, b) => a.restUm - b.restUm),
     []
@@ -235,7 +268,8 @@ export function Spectrum1DViewer({
   }, []);
 
   useEffect(() => {
-    if (!selectedKey) return;
+    if (!selectedAsset?.storageKey) return;
+    const activeAsset = selectedAsset;
     let cancelled = false;
 
     async function load() {
@@ -244,7 +278,11 @@ export function Spectrum1DViewer({
       setPlotReady(false);
       try {
         const response = await fetch(
-          `${withBasePath("/api/spectra/1d")}?key=${encodeURIComponent(selectedKey)}`
+          `${withBasePath("/api/spectra/1d")}?key=${encodeURIComponent(activeAsset.storageKey)}${
+            activeAsset.profile
+              ? `&profile=${encodeURIComponent(activeAsset.profile)}`
+              : ""
+          }`
         );
         const next = (await response.json()) as SpectrumResponse & { error?: string };
         if (!response.ok) {
@@ -269,7 +307,7 @@ export function Spectrum1DViewer({
     return () => {
       cancelled = true;
     };
-  }, [selectedKey]);
+  }, [selectedAsset]);
 
   useEffect(() => {
     if (!payload || !plotRef.current) {
@@ -285,8 +323,11 @@ export function Spectrum1DViewer({
         if (cancelled || !window.Plotly || !root) return;
 
         const x = currentPayload.spectrum.wavelength;
-        const y = currentPayload.spectrum.flux;
-        const yerr = currentPayload.spectrum.flux_error;
+        const yRaw = currentPayload.spectrum.flux;
+        const yerrRaw = currentPayload.spectrum.flux_error;
+        const sigma = Number(smoothingSigmaInput);
+        const y = smoothingEnabled ? gaussianSmooth(yRaw, sigma) : yRaw;
+        const yerr = smoothingEnabled ? gaussianSmooth(yerrRaw, sigma) : yerrRaw;
 
         const traces = [
           {
@@ -404,7 +445,7 @@ export function Spectrum1DViewer({
             text: `${selectedAssetLabel || "PRISM x1d"} (JADES-${currentPayload.meta.source_id})`,
             y: 0.975
           },
-          uirevision: "spectrum-1d-static",
+          uirevision: selectedKey,
           margin: { t: 86, r: 18, b: 52, l: 72 },
           paper_bgcolor: "#ffffff",
           plot_bgcolor: "#fbfffd",
@@ -525,7 +566,10 @@ export function Spectrum1DViewer({
     selectedAssetLabel,
     displayLineIds,
     trustedLineIds,
-    showLines
+    showLines,
+    smoothingEnabled,
+    smoothingSigmaInput,
+    selectedKey
   ]);
 
   function resetAxes() {
@@ -593,7 +637,9 @@ export function Spectrum1DViewer({
           confidence: effectiveConfidence,
           reporter_name: reporterName || undefined,
           comment: comment || undefined,
-          spectrum_asset_key: selectedKey || undefined
+          spectrum_asset_key: selectedAsset
+            ? `${selectedAsset.storageKey}${selectedAsset.profile ? `::${selectedAsset.profile}` : ""}`
+            : undefined
         })
       });
       const raw = await response.text();
@@ -715,6 +761,33 @@ export function Spectrum1DViewer({
         </p>
       </section>
 
+      <section className="card" style={{ background: "#f7fbff", boxShadow: "none" }}>
+        <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
+          <strong>Spectrum Display</strong>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+            <input
+              type="checkbox"
+              checked={smoothingEnabled}
+              onChange={(event) => setSmoothingEnabled(event.target.checked)}
+              style={{ width: "auto" }}
+            />
+            Gaussian smoothing
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+            σ (pixels)
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={smoothingSigmaInput}
+              onChange={(event) => setSmoothingSigmaInput(event.target.value)}
+              style={{ width: "88px" }}
+            />
+          </label>
+          <span className="muted">Autoscale is applied whenever a new spectrum is loaded.</span>
+        </div>
+      </section>
+
       <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
         <label style={{ minWidth: "320px", flex: "1 1 320px" }}>
           x1d file
@@ -724,7 +797,7 @@ export function Spectrum1DViewer({
             style={{ marginTop: "0.2rem" }}
           >
             {assets.map((asset) => (
-              <option key={asset.storageKey} value={asset.storageKey}>
+              <option key={`${asset.storageKey}::${asset.profile ?? ""}`} value={`${asset.storageKey}::${asset.profile ?? ""}`}>
                 {asset.label}
               </option>
             ))}

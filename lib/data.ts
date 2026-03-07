@@ -12,6 +12,7 @@ const EMERALD_PROGRAM_ID = "7935";
 const EMERALD_INSTRUMENT = "G395M/F290LP";
 const DIVER_GRATING_INSTRUMENT = "G140M/F070LP";
 const DIVER_PRISM_INSTRUMENT = "PRISM";
+const DIVER_GRATING_DIR = "diver_grating_plots";
 const DIVER_PRISM_PLOT_DIR = "diver_prism_plots";
 
 const EMISSION_TAG_COLUMNS: ReadonlyArray<{ column: string; tag: string }> = [
@@ -47,6 +48,16 @@ type PrismFitsAssetRecord = {
   observationNumber: string;
   filename: string;
   kind: "s2d" | "x1d";
+};
+
+type GratingCsvAssetRecord = {
+  sourceId: string;
+  observationNumber: string;
+  programId: string;
+  filter: string;
+  grating: string;
+  filename: string;
+  profiles: Array<{ column: string; slug: string }>;
 };
 
 type ObservationMode = {
@@ -155,8 +166,36 @@ function buildDiverSpectrumAsset(sourceId: string) {
   return {
     asset_type: "spectrum" as const,
     label: "DIVER Grating Spectrum",
-    storage_key: `diver_grating_plots/spectrum_plot_${sourceId}.png`,
-    preview_url: `/api/targets/image?file=diver_grating_plots/spectrum_plot_${sourceId}.png`,
+    storage_key: `${DIVER_GRATING_DIR}/spectrum_plot_${sourceId}.png`,
+    preview_url: `/api/targets/image?file=${DIVER_GRATING_DIR}/spectrum_plot_${sourceId}.png`,
+    access_level: "team" as const
+  };
+}
+
+function buildDiverGratingCsvSpectrumAsset(
+  record: GratingCsvAssetRecord,
+  profile: { column: string; slug: string }
+) {
+  const profileLabel = profile.slug;
+  const jsonFilename = record.filename.replace(/\.csv$/i, `__${profile.slug}_x1d.json`);
+  return {
+    asset_type: "spectrum" as const,
+    label: `DIVER Grating 1D (o${record.observationNumber}, ${record.filter}/${record.grating}, ${profileLabel})`,
+    storage_key: `${DIVER_GRATING_DIR}/${jsonFilename}`,
+    access_level: "team" as const
+  };
+}
+
+function buildDiverGratingCsvDownloadAsset(
+  record: GratingCsvAssetRecord,
+  profile: { column: string; slug: string }
+) {
+  return {
+    asset_type: "other" as const,
+    label: `DIVER Grating 1D CSV (o${record.observationNumber}, ${record.filter}/${record.grating}, ${profile.slug})`,
+    storage_key: `${DIVER_GRATING_DIR}/${record.filename}`,
+    spectrum_profile: profile.column,
+    preview_url: `/api/targets/file?file=${DIVER_GRATING_DIR}/${record.filename}`,
     access_level: "team" as const
   };
 }
@@ -189,8 +228,15 @@ function attachAssets(
   if (nextAssets.length === 0) {
     return target;
   }
-  const existingKeys = new Set(target.ancillary_assets.map((asset) => asset.storage_key.toLowerCase()));
-  const filtered = nextAssets.filter((asset) => !existingKeys.has(asset.storage_key.toLowerCase()));
+  const existingKeys = new Set(
+    target.ancillary_assets.map(
+      (asset) => `${asset.storage_key.toLowerCase()}::${(asset.spectrum_profile ?? "").toLowerCase()}`
+    )
+  );
+  const filtered = nextAssets.filter((asset) => {
+    const key = `${asset.storage_key.toLowerCase()}::${(asset.spectrum_profile ?? "").toLowerCase()}`;
+    return !existingKeys.has(key);
+  });
   if (filtered.length === 0) {
     return target;
   }
@@ -227,6 +273,75 @@ function loadPrismAssetsBySourceId(): Map<string, PrismAssetRecord[]> {
       observationNumber: match[1],
       sourceId: match[2],
       filename
+    };
+    const existing = bySourceId.get(record.sourceId) ?? [];
+    existing.push(record);
+    bySourceId.set(record.sourceId, existing);
+  }
+
+  for (const [sourceId, records] of bySourceId.entries()) {
+    bySourceId.set(
+      sourceId,
+      records.sort((a, b) => a.filename.localeCompare(b.filename))
+    );
+  }
+
+  return bySourceId;
+}
+
+function parseGratingProfilesFromHeader(csvPath: string): Array<{ column: string; slug: string }> {
+  try {
+    const raw = fs.readFileSync(csvPath, "utf8");
+    const firstLine = raw.split(/\r?\n/, 1)[0] ?? "";
+    if (!firstLine) return [];
+    const headers = parse(firstLine, { relax_quotes: true }) as string[][];
+    const columns = headers[0] ?? [];
+    const fluxColumns = columns
+      .map((column) => column.trim())
+      .filter((column) => /^flux_[-a-zA-Z0-9_]+_cgs$/i.test(column));
+    return fluxColumns
+      .filter((column) => {
+      const profilePart = column.replace(/^flux_/i, "").replace(/_cgs$/i, "");
+      const errorColumn = `fluxerr_${profilePart}_cgs`;
+      return columns.includes(errorColumn);
+      })
+      .map((column) => ({
+        column,
+        slug: column.replace(/^flux_/i, "").replace(/_cgs$/i, "")
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function loadGratingCsvAssetsBySourceId(): Map<string, GratingCsvAssetRecord[]> {
+  const gratingDir = path.join(localMediaBaseDir(), DIVER_GRATING_DIR);
+  if (!fs.existsSync(gratingDir)) {
+    return new Map();
+  }
+
+  const files = fs.readdirSync(gratingDir);
+  const bySourceId = new Map<string, GratingCsvAssetRecord[]>();
+  const csvPattern =
+    /^jw_o(\d+)_([0-9]+)_([0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9]+)_.*bundle_1d\.csv$/i;
+
+  for (const filename of files) {
+    const match = filename.match(csvPattern);
+    if (!match) {
+      continue;
+    }
+    const profiles = parseGratingProfilesFromHeader(path.join(gratingDir, filename));
+    if (profiles.length === 0) {
+      continue;
+    }
+    const record: GratingCsvAssetRecord = {
+      observationNumber: match[1],
+      programId: match[2],
+      sourceId: match[3],
+      filter: match[4].toUpperCase(),
+      grating: match[5].toUpperCase(),
+      filename,
+      profiles
     };
     const existing = bySourceId.get(record.sourceId) ?? [];
     existing.push(record);
@@ -375,6 +490,7 @@ export function loadTargets(): TargetRecord[] {
   const csvPath = path.join(DATA_DIR, "targets.csv");
   const csvRaw = fs.readFileSync(csvPath, "utf8");
   const viCatalogBySourceId = loadViCatalogBySourceId();
+  const gratingCsvAssetsBySourceId = loadGratingCsvAssetsBySourceId();
   const prismAssetsBySourceId = loadPrismAssetsBySourceId();
   const prismFitsAssetsBySourceId = loadPrismFitsAssetsBySourceId();
 
@@ -410,11 +526,18 @@ export function loadTargets(): TargetRecord[] {
     }
 
     const viRecord = viCatalogBySourceId.get(sourceId);
+    const gratingCsvRecords = gratingCsvAssetsBySourceId.get(sourceId) ?? [];
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
+    const gratingCsvAssets = gratingCsvRecords.flatMap((record) =>
+      record.profiles.flatMap((profile) => [
+        buildDiverGratingCsvSpectrumAsset(record, profile),
+        buildDiverGratingCsvDownloadAsset(record, profile)
+      ])
+    );
     const prismAssets = prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord));
     const prismFitsAssets = prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord));
-    let merged = attachAssets(baseTarget, [...prismAssets, ...prismFitsAssets]);
+    let merged = attachAssets(baseTarget, [...gratingCsvAssets, ...prismAssets, ...prismFitsAssets]);
 
     if (prismAssets.length > 0) {
       merged = {
@@ -429,13 +552,12 @@ export function loadTargets(): TargetRecord[] {
       };
     }
 
-    if (!viRecord) {
+    if (!viRecord && gratingCsvRecords.length === 0) {
       return merged;
     }
 
     const withSpectrum = attachDiverSpectrumAsset(merged, sourceId);
-
-    return {
+    const withGratingMode = {
       ...withSpectrum,
       status: withSpectrum.status,
       instrument: dedupe([...withSpectrum.instruments, DIVER_GRATING_INSTRUMENT]).join(", "),
@@ -444,7 +566,15 @@ export function loadTargets(): TargetRecord[] {
         withSpectrum.observation_modes,
         { instrument: DIVER_GRATING_INSTRUMENT, status: "observed" },
         true
-      ),
+      )
+    };
+
+    if (!viRecord) {
+      return withGratingMode;
+    }
+
+    return {
+      ...withGratingMode,
       emission_line_tags: viRecord?.emissionLineTags ?? []
     };
   });
@@ -457,6 +587,7 @@ export function loadTargets(): TargetRecord[] {
 
   const allCatalogSourceIds = new Set<string>([
     ...viCatalogBySourceId.keys(),
+    ...gratingCsvAssetsBySourceId.keys(),
     ...prismAssetsBySourceId.keys(),
     ...prismFitsAssetsBySourceId.keys()
   ]);
@@ -467,9 +598,10 @@ export function loadTargets(): TargetRecord[] {
     }
 
     const viRecord = viCatalogBySourceId.get(sourceId);
+    const gratingCsvRecords = gratingCsvAssetsBySourceId.get(sourceId) ?? [];
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
-    const hasGrating = viRecord !== undefined;
+    const hasGrating = viRecord !== undefined || gratingCsvRecords.length > 0;
     const hasPrism = prismRecords.length > 0 || prismFitsRecords.length > 0;
     const instruments = dedupe([
       ...(hasGrating ? [DIVER_GRATING_INSTRUMENT] : []),
@@ -477,6 +609,12 @@ export function loadTargets(): TargetRecord[] {
     ]);
     const ancillaryAssets = [
       ...(hasGrating ? [buildDiverSpectrumAsset(sourceId)] : []),
+      ...gratingCsvRecords.flatMap((record) =>
+        record.profiles.flatMap((profile) => [
+          buildDiverGratingCsvSpectrumAsset(record, profile),
+          buildDiverGratingCsvDownloadAsset(record, profile)
+        ])
+      ),
       ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord)),
       ...prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord))
     ];

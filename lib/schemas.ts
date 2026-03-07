@@ -15,6 +15,10 @@ export const AncillaryAssetSchema = z.object({
       message: "preview_url must be an absolute URL or an internal path"
     })
     .optional(),
+  spectrum_profile: z
+    .string()
+    .regex(/^[-a-zA-Z0-9_]+$/)
+    .optional(),
   access_level: z.enum(["team", "public"]).default("team")
 });
 
