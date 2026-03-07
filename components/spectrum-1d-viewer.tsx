@@ -543,6 +543,24 @@ export function Spectrum1DViewer({
       });
   }
 
+  function applyManualZFromInput(raw: string, normalizeInput: boolean) {
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+      if (normalizeInput) {
+        setZInput(templateZ.toFixed(3));
+      }
+      return;
+    }
+    const rounded = roundRedshift(parsed);
+    applyTemplatePositions(rounded);
+    setTemplateZ(rounded);
+    if (normalizeInput) {
+      setZInput(rounded.toFixed(3));
+    }
+    setTemplateObservedAnchor(null);
+    setTemplateObservedLineName("");
+  }
+
   async function submitBestRedshift() {
     if (!payload) {
       setSubmitError("Spectrum is not loaded yet.");
@@ -671,14 +689,12 @@ export function Spectrum1DViewer({
               onChange={(event) => {
                 const raw = event.target.value;
                 setZInput(raw);
-                const parsed = Number(raw);
-                if (Number.isFinite(parsed)) {
-                  const rounded = roundRedshift(parsed);
-                  applyTemplatePositions(rounded);
-                  setTemplateZ(rounded);
-                  setZInput(rounded.toFixed(3));
-                  setTemplateObservedAnchor(null);
-                  setTemplateObservedLineName("");
+              }}
+              onBlur={(event) => applyManualZFromInput(event.target.value, true)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  applyManualZFromInput(zInput, true);
                 }
               }}
               style={{ width: "120px" }}
