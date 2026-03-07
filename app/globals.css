@@ -335,6 +335,130 @@ th button {
   }
 }
 
+/* ── Interactive Spectra Browser ── */
+
+.spectra-browser {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  --spectra-sticky-top: clamp(4.2rem, 10vh, 6.5rem);
+  /* Break out of the 1120px container so the viewer uses full viewport width */
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+}
+
+.spectra-browser__sidebar {
+  width: 280px;
+  min-width: 180px;
+  max-width: 50vw;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: sticky;
+  top: var(--spectra-sticky-top);
+  max-height: calc(100vh - 5.5rem);
+  overflow-y: auto;
+  padding: 0.9rem;
+  resize: horizontal;
+  overflow: auto;
+}
+
+.spectra-browser__sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.spectra-browser__source-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+}
+
+.spectra-browser__source-item {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  line-height: 1.3;
+}
+
+.spectra-browser__source-item--active {
+  background: linear-gradient(120deg, #0f8f6f, #1aa781 60%, #38bf9a);
+  color: #f4fffb;
+}
+
+.spectra-browser__source-item--active .muted {
+  color: rgba(244,255,251,0.75);
+}
+
+.spectra-browser__source-name {
+  font-weight: 600;
+}
+
+.spectra-browser__main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.spectra-browser__source-header {
+  position: sticky;
+  top: var(--spectra-sticky-top);
+  z-index: 11;
+  background: var(--surface);
+  padding: 0.9rem;
+}
+
+.spectra-browser__filter-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: var(--surface-2);
+}
+
+.spectra-browser__filter-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #166b56;
+  display: flex;
+  align-items: center;
+}
+
+.spectra-browser__tag-btn,
+.spectra-browser__tag-btn--on {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+}
+
+.spectra-browser__tag-btn--on {
+  background: linear-gradient(120deg, #0f8f6f, #1aa781 60%, #38bf9a);
+  color: #f4fffb;
+  border: 0;
+}
+
+@media (max-width: 780px) {
+  .spectra-browser {
+    flex-direction: column;
+  }
+
+  .spectra-browser__sidebar {
+    width: 100%;
+    position: static;
+    max-height: 360px;
+  }
+}
+
 .footer {
   margin-top: 2rem;
   border-top: 1px solid var(--line);

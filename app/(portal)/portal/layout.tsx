@@ -25,6 +25,7 @@ export default function PortalLayout({
         <a href={withBasePath("/fitsmap/index.html")} target="_blank" rel="noreferrer">
           FitsMap
         </a>
+        <Link href={withBasePath("/portal/spectra")}>Quick Interactive</Link>
       </nav>
       {children}
     </div>
