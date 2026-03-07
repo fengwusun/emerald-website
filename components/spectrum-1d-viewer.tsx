@@ -217,12 +217,14 @@ export function Spectrum1DViewer({
   assets,
   zSpec,
   sourceName,
-  emeraldId
+  emeraldId,
+  onSubmittedRedshift
 }: {
   assets: SpectrumAssetOption[];
   zSpec: number;
   sourceName: string;
   emeraldId: string;
+  onSubmittedRedshift?: (nextZ: number) => void;
 }) {
   const [selectedKey, setSelectedKey] = useState(
     assets[0] ? `${assets[0].storageKey}::${assets[0].profile ?? ""}` : ""
@@ -754,6 +756,7 @@ export function Spectrum1DViewer({
           result.submission?.submitted_at ?? Date.now()
         ).toLocaleString()}.`
       );
+      onSubmittedRedshift?.(templateZ);
       setComment("");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Failed to submit redshift");
