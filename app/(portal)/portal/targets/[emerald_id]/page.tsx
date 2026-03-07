@@ -6,8 +6,6 @@ import { getTargetById } from "@/lib/data";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 import { Spectrum1DViewer } from "@/components/spectrum-1d-viewer";
 
-export const dynamic = "force-dynamic";
-
 function isImageAssetPath(pathname: string): boolean {
   return /\.(png|jpg|jpeg)(\?|$)/i.test(pathname);
 }

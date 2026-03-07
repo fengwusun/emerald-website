@@ -3,8 +3,6 @@ import { PortalTargetTable } from "@/components/portal-target-table";
 import { loadTargets } from "@/lib/data";
 import { withBasePath } from "@/lib/base-path";
 
-export const dynamic = "force-dynamic";
-
 export default function PortalTargetsPage() {
   const targets = loadTargets();
 
