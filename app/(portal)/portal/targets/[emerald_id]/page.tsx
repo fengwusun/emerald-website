@@ -22,11 +22,14 @@ function ancillaryTagLabel(assetType: string, storageKey: string): string {
 }
 
 export default async function TargetDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ emerald_id: string }>;
+  searchParams: Promise<{ next?: string }>;
 }) {
   const { emerald_id } = await params;
+  const resolvedSearchParams = await searchParams;
   const target = getTargetById(emerald_id);
 
   if (!target) {
@@ -44,11 +47,13 @@ export default async function TargetDetailPage({
   const prismX1dAssets = target.ancillary_assets
     .filter((asset) => /_x1d\.fits$/i.test(asset.storage_key))
     .map((asset) => ({ storageKey: asset.storage_key, label: asset.label }));
+  const requestedNext = typeof resolvedSearchParams.next === "string" ? resolvedSearchParams.next : "";
+  const backHref = requestedNext.startsWith("/portal/targets") ? requestedNext : "/portal/targets";
 
   return (
     <div className="grid">
       <p>
-        <Link href="/portal/targets">← Back to catalog</Link>
+        <Link href={backHref}>← Back to catalog</Link>
       </p>
       <h1>{target.name}</h1>
       <p className="muted">{target.emerald_id}</p>
