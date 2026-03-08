@@ -629,7 +629,7 @@ EMR-78393,JADES-1078393,189.245417,62.201795,5.78,queued,medium,7935,,"[{""asset
 EMR-78398,JADES-1078398,189.242491,62.201839,4.656,queued,low,7935,,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78398/images/7935-obs4_ID-1078398.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078398.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS5 Source Image"", ""storage_key"": ""targets/EMR-78398/images/7935-obs5_ID-1078398.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs5_ID-1078398.jpg"", ""access_level"": ""team""}]",26.36,25.94
 EMR-78455,JADES-1078455,189.231958,62.202326,6.55,queued,high,7935,-1,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78455/images/7935-obs4_ID-1078455.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078455.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS5 Source Image"", ""storage_key"": ""targets/EMR-78455/images/7935-obs5_ID-1078455.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs5_ID-1078455.jpg"", ""access_level"": ""team""}]",27.37,26.95
 EMR-78695,JADES-1078695,189.234623,62.203234,6.544,queued,high,7935,,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78695/images/7935-obs4_ID-1078695.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078695.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS5 Source Image"", ""storage_key"": ""targets/EMR-78695/images/7935-obs5_ID-1078695.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs5_ID-1078695.jpg"", ""access_level"": ""team""}]",28.92,28.02
-EMR-78727,JADES-1078727,189.233343,62.203421,4.214,queued,low,7935,high EW OIII + Hb,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78727/images/7935-obs4_ID-1078727.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078727.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS5 Source Image"", ""storage_key"": ""targets/EMR-78727/images/7935-obs5_ID-1078727.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs5_ID-1078727.jpg"", ""access_level"": ""team""}]",26.84,26.87
+EMR-78727,JADES-1078727,189.233343,62.203421,4.212,queued,low,7935,high EW OIII + Hb,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78727/images/7935-obs4_ID-1078727.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078727.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS5 Source Image"", ""storage_key"": ""targets/EMR-78727/images/7935-obs5_ID-1078727.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs5_ID-1078727.jpg"", ""access_level"": ""team""}]",26.84,26.87
 EMR-78732,JADES-1078732,189.246887,62.203411,5.189,queued,medium,7935,,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78732/images/7935-obs4_ID-1078732.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078732.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS5 Source Image"", ""storage_key"": ""targets/EMR-78732/images/7935-obs5_ID-1078732.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs5_ID-1078732.jpg"", ""access_level"": ""team""}]",26.84,25.97
 EMR-78773,JADES-1078773,189.202999,62.204632,5.188,queued,high,7935,,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78773/images/7935-obs4_ID-1078773.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078773.jpg"", ""access_level"": ""team""}]",25.25,24.52
 EMR-78779,JADES-1078779,189.20155,62.204795,5.161,queued,medium,7935,,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-78779/images/7935-obs4_ID-1078779.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1078779.jpg"", ""access_level"": ""team""}]",26.56,26.11
@@ -922,14 +922,14 @@ EMR-188403,JADES-1188403,189.216644,62.207081,5.18,queued,medium,7935,HDF850.1,"
 EMR-206691,JADES-1206691,189.13916,62.235699,5.3,queued,medium,7935,"GN10, N2CLS DSFG","[{""asset_type"": ""image"", ""label"": ""OBS3 Source Image"", ""storage_key"": ""targets/EMR-206691/images/7935-obs3_ID-1206691.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs3_ID-1206691.jpg"", ""access_level"": ""team""}, {""asset_type"": ""image"", ""label"": ""OBS6 Source Image"", ""storage_key"": ""targets/EMR-206691/images/7935-obs6_ID-1206691.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs6_ID-1206691.jpg"", ""access_level"": ""team""}]",28.91,25.61
 EMR-210090,JADES-1210090,189.114685,62.205013,1,queued,medium,7935,N2CLS DSFG,"[{""asset_type"": ""image"", ""label"": ""OBS4 Source Image"", ""storage_key"": ""targets/EMR-210090/images/7935-obs4_ID-1210090.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs4_ID-1210090.jpg"", ""access_level"": ""team""}]",27.88,23.75
 EMR-237037,JADES-1237037,189.348587,62.264408,4.96,queued,high,7935,Trussler++ JADES EMPG Candidate,"[{""asset_type"": ""image"", ""label"": ""OBS2 Source Image"", ""storage_key"": ""targets/EMR-237037/images/7935-obs2_ID-1237037.jpg"", ""preview_url"": ""/api/targets/image?file=7935-obs2_ID-1237037.jpg"", ""access_level"": ""team""}]",28.68,28.04
-DIV-777017,JADES-777017,189.1662600,62.3085250,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1023714 (sep=0.02"")",[],28.26,27.91
-DIV-777033,JADES-777033,189.2535400,62.1941760,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1053761 (sep=0.04"")",[],28.25,28.43
+DIV-777017,JADES-777017,189.1662600,62.3085250,8.462,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1023714 (sep=0.02"")",[],28.26,27.91
+DIV-777033,JADES-777033,189.2535400,62.1941760,10.012,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1053761 (sep=0.04"")",[],28.25,28.43
 DIV-777046,JADES-777046,189.2706100,62.2105980,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1059666 (sep=0.02"")",[],29.48,29.37
 DIV-777047,JADES-777047,189.3029600,62.2107600,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1059711 (sep=0.04"")",[],28.09,28.17
 DIV-777052,JADES-777052,189.2849700,62.2204000,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1062952 (sep=0.03"")",[],28.59,28.34
 DIV-777056,JADES-777056,189.2828700,62.2383540,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1066679 (sep=0.03"")",[],28.59,28.26
 DIV-777057,JADES-777057,189.2438400,62.2405970,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1066950 (sep=0.04"")",[],28.45,29.02
-DIV-777060,JADES-777060,189.2511400,62.1874280,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1075414 (sep=0.03"")",[],28.79,28.73
+DIV-777060,JADES-777060,189.2511400,62.1874280,-1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1075414 (sep=0.03"")",[],28.79,28.73
 DIV-777061,JADES-777061,189.2536200,62.1882170,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1075561 (sep=0.02"")",[],28.76,28.85
 DIV-1002411,JADES-1002411,189.1706500,62.2308540,0.855,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.62,27.03
 DIV-1002472,JADES-1002472,189.1656000,62.2311900,3.697,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.86,26.77
@@ -969,7 +969,7 @@ DIV-1009391,JADES-1009391,189.2120500,62.2534140,3.825,observed,low,8018,Coordin
 DIV-1009692,JADES-1009692,189.1555000,62.2544820,6.748,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.74,27.37
 DIV-1009963,JADES-1009963,189.1430000,62.2556600,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.38,28.77
 DIV-1010020,JADES-1010020,189.1384600,62.2559050,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],31.41,28.18
-DIV-1010033,JADES-1010033,189.2240900,62.2560230,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.94,26.35
+DIV-1010033,JADES-1010033,189.2240900,62.2560230,2.02,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.94,26.35
 DIV-1010048,JADES-1010048,189.1517800,62.2560840,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.39,26.35
 DIV-1010228,JADES-1010228,189.2165200,62.2568550,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.81,27.95
 DIV-1010239,JADES-1010239,189.2252000,62.2568970,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.66,28.90
@@ -996,7 +996,7 @@ DIV-1013238,JADES-1013238,189.1837300,62.2692340,1,observed,low,8018,Coordinates
 DIV-1013294,JADES-1013294,189.1179000,62.2694970,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.48,25.86
 DIV-1013313,JADES-1013313,189.1267400,62.2695100,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.07,27.31
 DIV-1013488,JADES-1013488,189.2260700,62.2702030,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.06,25.16
-DIV-1013619,JADES-1013619,189.1134500,62.2708660,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.46,23.62
+DIV-1013619,JADES-1013619,189.1134500,62.2708660,0.849,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.46,23.62
 DIV-1013925,JADES-1013925,189.1310700,62.2718300,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.83,28.38
 DIV-1014303,JADES-1014303,189.2096600,62.2731200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.05,27.54
 DIV-1014316,JADES-1014316,189.2064000,62.2731800,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.91,26.90
@@ -1022,8 +1022,8 @@ DIV-1017632,JADES-1017632,189.1106000,62.2839470,1,observed,low,8018,Coordinates
 DIV-1017825,JADES-1017825,189.1227900,62.2844800,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.08,28.00
 DIV-1017941,JADES-1017941,189.1646400,62.2847560,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.34,28.49
 DIV-1018012,JADES-1018012,189.0779000,62.2849540,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.63,27.26
-DIV-1018321,JADES-1018321,189.1781800,62.2860600,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.66,23.66
-DIV-1018335,JADES-1018335,189.1818200,62.2860200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.01,23.89
+DIV-1018321,JADES-1018321,189.1781800,62.2860600,0.849,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.66,23.66
+DIV-1018335,JADES-1018335,189.1818200,62.2860200,2.488,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.01,23.89
 DIV-1018640,JADES-1018640,189.1555600,62.2867900,6.56345,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.20,28.48
 DIV-1018651,JADES-1018651,189.1310100,62.2868420,5.2677,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.65,25.90
 DIV-1018996,JADES-1018996,189.1703200,62.2878040,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.47,27.84
@@ -1065,56 +1065,56 @@ DIV-1023501,JADES-1023501,189.1740600,62.3067250,1,observed,low,8018,Coordinates
 DIV-1023630,JADES-1023630,189.1857900,62.3078200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.88,26.40
 DIV-1023872,JADES-1023872,189.1806600,62.3102530,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.77,24.29
 DIV-1023927,JADES-1023927,189.1774300,62.3106080,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.67,28.70
-DIV-1024982,JADES-1024982,189.1687800,62.2263220,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.24,22.08
-DIV-1025263,JADES-1025263,189.1855200,62.2298550,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.64,22.73
-DIV-1025275,JADES-1025275,189.1798400,62.2298700,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.60,23.01
+DIV-1024982,JADES-1024982,189.1687800,62.2263220,1.485,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.24,22.08
+DIV-1025263,JADES-1025263,189.1855200,62.2298550,1.318,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.64,22.73
+DIV-1025275,JADES-1025275,189.1798400,62.2298700,1.246,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.60,23.01
 DIV-1025465,JADES-1025465,189.1888400,62.2313080,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.58,26.31
-DIV-1025602,JADES-1025602,189.1710400,62.2328900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.79,23.37
+DIV-1025602,JADES-1025602,189.1710400,62.2328900,0.945,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.79,23.37
 DIV-1025683,JADES-1025683,189.1698900,62.2331500,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1025605 (sep=0.77"")",[],26.07,25.53
-DIV-1025830,JADES-1025830,189.1869000,62.2350040,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.11,23.22
-DIV-1026188,JADES-1026188,189.1469000,62.2378920,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.21,23.68
-DIV-1026265,JADES-1026265,189.1395700,62.2383700,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.82,22.73
+DIV-1025830,JADES-1025830,189.1869000,62.2350040,1.647,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.11,23.22
+DIV-1026188,JADES-1026188,189.1469000,62.2378920,1.261,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.21,23.68
+DIV-1026265,JADES-1026265,189.1395700,62.2383700,3.413,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.82,22.73
 DIV-1026456,JADES-1026456,189.1482700,62.2400170,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.75,19.41
 DIV-1026479,JADES-1026479,189.2382200,62.2395970,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.28,25.20
 DIV-1026481,JADES-1026481,189.2136500,62.2394830,4.08992,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.24,29.16
-DIV-1026949,JADES-1026949,189.1375900,62.2437000,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.26,22.97
-DIV-1027004,JADES-1027004,189.1475700,62.2438240,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.29,24.04
+DIV-1026949,JADES-1026949,189.1375900,62.2437000,1.22,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.26,22.97
+DIV-1027004,JADES-1027004,189.1475700,62.2438240,2.001,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.29,24.04
 DIV-1027295,JADES-1027295,189.2396400,62.2459950,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.20,28.21
 DIV-1027643,JADES-1027643,189.2134000,62.2480770,4.40098,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.58,26.87
-DIV-1027831,JADES-1027831,189.2537500,62.2495080,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.51,22.41
-DIV-1028033,JADES-1028033,189.2034900,62.2506750,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.28,23.97
+DIV-1027831,JADES-1027831,189.2537500,62.2495080,1.263,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.51,22.41
+DIV-1028033,JADES-1028033,189.2034900,62.2506750,3.109,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.28,23.97
 DIV-1028229,JADES-1028229,189.2258900,62.2519600,4.402586935,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.12,26.85
 DIV-1028276,JADES-1028276,189.2523700,62.2528650,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1028274 (sep=0.67"")",[],25.35,25.80
 DIV-1028352,JADES-1028352,189.1933000,62.2529030,4.40711,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.80,28.09
-DIV-1028441,JADES-1028441,189.1226500,62.2536200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.44,22.00
-DIV-1028706,JADES-1028706,189.1574200,62.2563970,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.15,24.12
+DIV-1028441,JADES-1028441,189.1226500,62.2536200,3.652,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.44,22.00
+DIV-1028706,JADES-1028706,189.1574200,62.2563970,1.221,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.15,24.12
 DIV-1028769,JADES-1028769,189.1435000,62.2564430,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.12,27.82
 DIV-1028932,JADES-1028932,189.2046000,62.2576940,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.75,27.87
-DIV-1028949,JADES-1028949,189.2191000,62.2581140,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.73,23.95
+DIV-1028949,JADES-1028949,189.2191000,62.2581140,1.016,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.73,23.95
 DIV-1029154,JADES-1029154,189.1590300,62.2602270,4.17,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.14,24.78
 DIV-1029889,JADES-1029889,189.0927000,62.2660400,4.473230597,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.34,27.53
-DIV-1029953,JADES-1029953,189.2183000,62.2669070,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.94,23.92
+DIV-1029953,JADES-1029953,189.2183000,62.2669070,0.852,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.94,23.92
 DIV-1030035,JADES-1030035,189.1189400,62.2672600,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.55,26.60
 DIV-1030224,JADES-1030224,189.1220200,62.2705040,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],20.84,20.89
 DIV-1030305,JADES-1030305,189.2084500,62.2698360,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1030304 (sep=0.22"")",[],27.52,27.35
 DIV-1030362,JADES-1030362,189.1944600,62.2707140,4.07904,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.06,26.96
-DIV-1030572,JADES-1030572,189.1975400,62.2723500,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.68,22.84
-DIV-1030587,JADES-1030587,189.2044500,62.2724100,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.54,21.90
-DIV-1030611,JADES-1030611,189.1344900,62.2723600,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.12,24.98
-DIV-1030764,JADES-1030764,189.1351500,62.2744260,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.35,22.24
+DIV-1030572,JADES-1030572,189.1975400,62.2723500,0.502,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.68,22.84
+DIV-1030587,JADES-1030587,189.2044500,62.2724100,0.501,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.54,21.90
+DIV-1030611,JADES-1030611,189.1344900,62.2723600,3.363,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.12,24.98
+DIV-1030764,JADES-1030764,189.1351500,62.2744260,0.851,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.35,22.24
 DIV-1031481,JADES-1031481,189.1397000,62.2759900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.45,28.38
-DIV-1031618,JADES-1031618,189.2197700,62.2770840,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.07,23.88
+DIV-1031618,JADES-1031618,189.2197700,62.2770840,1.362,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.07,23.88
 DIV-1032090,JADES-1032090,189.0810900,62.2806630,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.27,26.34
-DIV-1032409,JADES-1032409,189.1638600,62.2823640,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.84,22.76
+DIV-1032409,JADES-1032409,189.1638600,62.2823640,1.683,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.84,22.76
 DIV-1032490,JADES-1032490,189.0859400,62.2830470,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.48,24.59
-DIV-1032940,JADES-1032940,189.1155200,62.2856750,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.25,22.75
-DIV-1032966,JADES-1032966,189.0886100,62.2856860,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.64,22.00
+DIV-1032940,JADES-1032940,189.1155200,62.2856750,1.335,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.25,22.75
+DIV-1032966,JADES-1032966,189.0886100,62.2856860,1.994,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.64,22.00
 DIV-1033045,JADES-1033045,189.0845300,62.2857800,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.94,26.96
-DIV-1033161,JADES-1033161,189.1759200,62.2864900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.67,21.47
+DIV-1033161,JADES-1033161,189.1759200,62.2864900,2.728,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.67,21.47
 DIV-1033301,JADES-1033301,189.1013800,62.2874680,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.24,26.16
 DIV-1033333,JADES-1033333,189.1124300,62.2874340,4.38535,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.92,28.34
 DIV-1033390,JADES-1033390,189.0931700,62.2879180,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.84,27.30
-DIV-1033410,JADES-1033410,189.1041600,62.2881900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.22,23.92
+DIV-1033410,JADES-1033410,189.1041600,62.2881900,1.526,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.22,23.92
 DIV-1033439,JADES-1033439,189.0943500,62.2882200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.84,27.48
 DIV-1033938,JADES-1033938,189.1900000,62.2918660,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.29,25.54
 DIV-1034159,JADES-1034159,189.1142900,62.2930030,4.822859,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.00,26.67
@@ -1122,11 +1122,11 @@ DIV-1034762,JADES-1034762,189.1983300,62.2970470,7.040499345,observed,low,8018,C
 DIV-1035188,JADES-1035188,189.1087500,62.3020360,4.532571384,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.54,26.64
 DIV-1035191,JADES-1035191,189.1578000,62.3023450,7.49764,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.05,25.83
 DIV-1035192,JADES-1035192,189.1579900,62.3024000,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.28,25.40
-DIV-1035319,JADES-1035319,189.1881900,62.3045230,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.57,22.57
+DIV-1035319,JADES-1035319,189.1881900,62.3045230,1.452,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.57,22.57
 DIV-1035334,JADES-1035334,189.1810500,62.3044600,4.3789,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.47,26.70
 DIV-1035339,JADES-1035339,189.1201500,62.3043980,5.272090371,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.97,26.26
 DIV-1035355,JADES-1035355,189.1569000,62.3045270,5.23957,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.04,27.79
-DIV-1035392,JADES-1035392,189.1776700,62.3057860,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.15,21.34
+DIV-1035392,JADES-1035392,189.1776700,62.3057860,1.146,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.15,21.34
 DIV-1035490,JADES-1035490,189.1606400,62.3071750,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1035491 (sep=0.96"")",[],25.07,25.70
 DIV-1035508,JADES-1035508,189.1655000,62.3068920,5.18991,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.52,26.17
 DIV-1048844,JADES-1048844,189.2282900,62.1807100,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.38,27.10
@@ -1198,7 +1198,7 @@ DIV-1065598,JADES-1065598,189.2783500,62.2311000,1,observed,low,8018,Coordinates
 DIV-1065644,JADES-1065644,189.2177600,62.2314100,5.35794,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.73,27.42
 DIV-1065744,JADES-1065744,189.2613200,62.2319760,5.53589,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.04,25.75
 DIV-1065868,JADES-1065868,189.2605000,62.2327900,5.36172,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.22,26.77
-DIV-1066037,JADES-1066037,189.2428000,62.2337600,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.65,27.50
+DIV-1066037,JADES-1066037,189.2428000,62.2337600,5.609,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.65,27.50
 DIV-1066100,JADES-1066100,189.2272000,62.2341420,4.763,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.86,26.48
 DIV-1066148,JADES-1066148,189.2827800,62.2344740,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.21,27.54
 DIV-1066218,JADES-1066218,189.2694700,62.2348200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.77,28.10
@@ -1212,7 +1212,7 @@ DIV-1067025,JADES-1067025,189.2646200,62.2413000,5.18148,observed,low,8018,Coord
 DIV-1067352,JADES-1067352,189.2750400,62.2474940,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.03,25.97
 DIV-1074401,JADES-1074401,189.2333200,62.1820950,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.90,26.88
 DIV-1075220,JADES-1075220,189.2155600,62.1864100,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.36,26.96
-DIV-1075256,JADES-1075256,189.2236800,62.1867600,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.14,22.70
+DIV-1075256,JADES-1075256,189.2236800,62.1867600,2.981,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.14,22.70
 DIV-1075382,JADES-1075382,189.2420200,62.1874120,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.55,25.13
 DIV-1075384,JADES-1075384,189.2423400,62.1874770,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.39,26.37
 DIV-1075712,JADES-1075712,189.2613500,62.1889400,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.84,24.75
@@ -1225,16 +1225,16 @@ DIV-1077537,JADES-1077537,189.2919300,62.1979560,1,observed,low,8018,Coordinates
 DIV-1077584,JADES-1077584,189.2210400,62.1982200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.95,26.85
 DIV-1077646,JADES-1077646,189.2934000,62.1984200,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1206835 (sep=0.10"")",[],29.11,28.76
 DIV-1077652,JADES-1077652,189.2932300,62.1990130,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.78,26.59
-DIV-1077658,JADES-1077658,189.2056100,62.1986300,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.21,23.39
+DIV-1077658,JADES-1077658,189.2056100,62.1986300,0.963,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.21,23.39
 DIV-1078349,JADES-1078349,189.2099500,62.2014100,5.70542,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.68,25.61
 DIV-1078394,JADES-1078394,189.2458000,62.2024840,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.36,21.13
-DIV-1078425,JADES-1078425,189.3095200,62.2023540,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.50,21.28
+DIV-1078425,JADES-1078425,189.3095200,62.2023540,2.279,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.50,21.28
 DIV-1078546,JADES-1078546,189.2922000,62.2024270,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1078547 (sep=0.04"")",[],27.70,27.11
 DIV-1078569,JADES-1078569,189.3147100,62.2023960,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1056785 (sep=0.80"")",[],25.66,26.02
 DIV-1078579,JADES-1078579,189.3157500,62.2029400,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1200352 (sep=0.05"")",[],27.32,27.16
-DIV-1078587,JADES-1078587,189.3164500,62.2036700,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.08,21.12
+DIV-1078587,JADES-1078587,189.3164500,62.2036700,1.021,observed,low,8018,Coordinates from JADES DR5 catalog,[],22.08,21.12
 DIV-1078646,JADES-1078646,189.2262400,62.2028900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.38,27.40
-DIV-1078675,JADES-1078675,189.3001600,62.2033270,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.61,21.82
+DIV-1078675,JADES-1078675,189.3001600,62.2033270,2.924,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.61,21.82
 DIV-1078691,JADES-1078691,189.2785800,62.2032170,5.04619,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.94,26.41
 DIV-1078692,JADES-1078692,189.2787200,62.2032200,5.04798,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.39,26.56
 DIV-1078776,JADES-1078776,189.2036400,62.2046740,5.17697,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.18,27.65
@@ -1246,7 +1246,7 @@ DIV-1079313,JADES-1079313,189.2855000,62.2068200,5.231,observed,low,8018,Coordin
 DIV-1079801,JADES-1079801,189.1923400,62.2096060,4.35006,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.19,27.39
 DIV-1079874,JADES-1079874,189.1897700,62.2101400,5.53395,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.66,26.92
 DIV-1080070,JADES-1080070,189.1911200,62.2120900,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1060169 (sep=0.66"")",[],27.88,28.15
-DIV-1080232,JADES-1080232,189.1831700,62.2139550,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.63,21.77
+DIV-1080232,JADES-1080232,189.1831700,62.2139550,0.559,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.63,21.77
 DIV-1080263,JADES-1080263,189.2078400,62.2137400,4.20439,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.38,28.46
 DIV-1080381,JADES-1080381,189.2036000,62.2123370,4.61265,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.16,27.63
 DIV-1080391,JADES-1080391,189.1942400,62.2125130,4.615662816,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.00,27.04
@@ -1255,29 +1255,29 @@ DIV-1080601,JADES-1080601,189.1816300,62.2136100,1,observed,low,8018,Coordinates
 DIV-1080834,JADES-1080834,189.2744100,62.2158700,4.15291,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.23,27.61
 DIV-1080875,JADES-1080875,189.2063000,62.2153320,5.18516,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.86,26.18
 DIV-1080895,JADES-1080895,189.1829200,62.2153430,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.36,27.05
-DIV-1081003,JADES-1081003,189.2865100,62.2160700,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.31,23.04
+DIV-1081003,JADES-1081003,189.2865100,62.2160700,2.269,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.31,23.04
 DIV-1081026,JADES-1081026,189.2881800,62.2160720,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.59,24.41
 DIV-1081037,JADES-1081037,189.2600600,62.2161030,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.52,26.42
 DIV-1081055,JADES-1081055,189.2917200,62.2163620,4.61137,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.07,27.05
 DIV-1081110,JADES-1081110,189.3043400,62.2165370,5.1196,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.07,27.14
 DIV-1081133,JADES-1081133,189.3013500,62.2168350,5.21948,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.47,28.07
-DIV-1081216,JADES-1081216,189.1756700,62.2180820,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.22,23.70
+DIV-1081216,JADES-1081216,189.1756700,62.2180820,2.003,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.22,23.70
 DIV-1081409,JADES-1081409,189.2769000,62.2191200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.94,27.99
-DIV-1081462,JADES-1081462,189.2071400,62.2203000,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.95,21.55
+DIV-1081462,JADES-1081462,189.2071400,62.2203000,0.473,observed,low,8018,Coordinates from JADES DR5 catalog,[],21.95,21.55
 DIV-1081486,JADES-1081486,189.3063800,62.2195300,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.64,28.55
 DIV-1081490,JADES-1081490,189.2709200,62.2196800,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.57,28.04
 DIV-1081491,JADES-1081491,189.2711300,62.2197570,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.24,27.32
 DIV-1081573,JADES-1081573,189.2089000,62.2202870,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.91,28.34
-DIV-1081849,JADES-1081849,189.2999300,62.2238200,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.41,22.15
+DIV-1081849,JADES-1081849,189.2999300,62.2238200,1.994,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.41,22.15
 DIV-1081949,JADES-1081949,189.1852900,62.2237930,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],28.57,28.79
 DIV-1082074,JADES-1082074,189.2558600,62.2251470,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.56,26.49
-DIV-1082076,JADES-1082076,189.2576400,62.2251400,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.32,22.30
+DIV-1082076,JADES-1082076,189.2576400,62.2251400,1.228,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.32,22.30
 DIV-1082246,JADES-1082246,189.2185000,62.2271840,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],25.72,26.10
 DIV-1082774,JADES-1082774,189.2603900,62.2333000,5.35515,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.67,27.08
 DIV-1082780,JADES-1082780,189.2567600,62.2334900,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1120974 (sep=0.18"")",[],25.33,25.52
 DIV-1082812,JADES-1082812,189.2671200,62.2340900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],24.87,24.69
 DIV-1082830,JADES-1082830,189.2378800,62.2340850,5.795283168,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.28,27.33
-DIV-1082898,JADES-1082898,189.2799800,62.2355900,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.52,21.89
+DIV-1082898,JADES-1082898,189.2799800,62.2355900,2.483,observed,low,8018,Coordinates from JADES DR5 catalog,[],23.52,21.89
 DIV-1082961,JADES-1082961,189.2547100,62.2367740,5.09479,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.78,26.66
 DIV-1083128,JADES-1083128,189.2693300,62.2414320,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],20.90,21.04
 DIV-1083273,JADES-1083273,189.2621000,62.2469100,1,observed,low,8018,Coordinates from JADES DR5 catalog,[],27.44,27.62
