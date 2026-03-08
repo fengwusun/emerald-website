@@ -929,7 +929,7 @@ DIV-777047,JADES-777047,189.3029600,62.2107600,1,observed,low,8018,"Coordinates 
 DIV-777052,JADES-777052,189.2849700,62.2204000,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1062952 (sep=0.03"")",[],28.59,28.34
 DIV-777056,JADES-777056,189.2828700,62.2383540,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1066679 (sep=0.03"")",[],28.59,28.26
 DIV-777057,JADES-777057,189.2438400,62.2405970,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1066950 (sep=0.04"")",[],28.45,29.02
-DIV-777060,JADES-777060,189.2511400,62.1874280,0,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1075414 (sep=0.03"")",[],28.79,28.73
+DIV-777060,JADES-777060,189.2511400,62.1874280,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1075414 (sep=0.03"")",[],28.79,28.73
 DIV-777061,JADES-777061,189.2536200,62.1882170,1,observed,low,8018,"Coordinates via PRISM s2d header + DR5 nearest match ID 1075561 (sep=0.02"")",[],28.76,28.85
 DIV-1002411,JADES-1002411,189.1706500,62.2308540,0.855,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.62,27.03
 DIV-1002472,JADES-1002472,189.1656000,62.2311900,3.697,observed,low,8018,Coordinates from JADES DR5 catalog,[],26.86,26.77

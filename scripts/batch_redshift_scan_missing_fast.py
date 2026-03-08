@@ -8,12 +8,44 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-STRONG_REST_LINES_UM = [
-    0.372850, 0.386876, 0.410289, 0.434168, 0.486267, 0.4960295, 0.500824,
-    0.656461, 0.658527, 0.907110, 0.953321, 1.005210, 1.083330, 1.094100,
-    1.257020, 1.282150, 1.644050, 1.875600, 2.059250, 2.122380, 2.166100,
-    2.625840, 3.290000,
+LINE_DEFS = [
+    # Key anchors (high weight)
+    {"id": "halpha", "rest_um": 0.656461, "weight": 5.0},
+    {"id": "oiii_5008", "rest_um": 0.500824, "weight": 5.0},
+    {"id": "paalpha", "rest_um": 1.875600, "weight": 4.8},
+    {"id": "hei_10833", "rest_um": 1.083330, "weight": 4.5},
+    {"id": "pabeta", "rest_um": 1.282150, "weight": 4.4},
+    {"id": "siii_9071", "rest_um": 0.907110, "weight": 4.0},
+    {"id": "siii_9533", "rest_um": 0.953321, "weight": 4.2},
+    {"id": "pah_32900", "rest_um": 3.290000, "weight": 4.0},
+    # Secondary (moderate)
+    {"id": "oii_3729", "rest_um": 0.372850, "weight": 3.2},
+    {"id": "hbeta", "rest_um": 0.486267, "weight": 3.3},
+    {"id": "hgamma", "rest_um": 0.434168, "weight": 2.7},
+    {"id": "hdelta", "rest_um": 0.410289, "weight": 2.5},
+    {"id": "neiii_3869", "rest_um": 0.386876, "weight": 2.6},
+    {"id": "oiii_4363", "rest_um": 0.436334, "weight": 2.3},
+    {"id": "oiii_4960", "rest_um": 0.4960295, "weight": 2.5},
+    {"id": "padelta", "rest_um": 1.005210, "weight": 2.4},
+    {"id": "brbeta", "rest_um": 2.625840, "weight": 2.0},
+    {"id": "brgamma", "rest_um": 2.166100, "weight": 2.0},
+    # Weak/supporting (lower)
+    {"id": "nii_6585", "rest_um": 0.658527, "weight": 1.2},
+    {"id": "pagamma", "rest_um": 1.094100, "weight": 1.4},
+    {"id": "feii_12570", "rest_um": 1.257020, "weight": 1.2},
+    {"id": "feii_16440", "rest_um": 1.644050, "weight": 1.2},
 ]
+
+KEY_LINE_IDS = {
+    "halpha",
+    "oiii_5008",
+    "paalpha",
+    "hei_10833",
+    "pabeta",
+    "siii_9071",
+    "siii_9533",
+    "pah_32900",
+}
 
 @dataclass
 class Spectrum:
@@ -119,6 +151,47 @@ def xcorr_near(a, b, lag_center, lag_hw, min_ov=40):
 
 
 def detect_seeds(wave, flux, maxn=10):
+    peaks = detect_peaks(wave, flux, sn_threshold=2.5, maxn=20)
+    cand = []
+    for sn, obs in peaks:
+        for line in LINE_DEFS:
+            z = obs / line["rest_um"] - 1.0
+            if 0 < z < 10:
+                cand.append(round(z, 3))
+    uniq = sorted(set(cand))
+    scored = []
+    for z in uniq:
+        n = 0
+        weighted = 0.0
+        key_hits = 0
+        strong_hits = 0
+        for sn, obs in peaks:
+            best_line = None
+            best_delta = 1e9
+            for line in LINE_DEFS:
+                pred = line["rest_um"] * (1 + z)
+                delta = abs(obs - pred)
+                if delta < best_delta:
+                    best_delta = delta
+                    best_line = line
+            if best_line is None:
+                continue
+            tol = max(0.012, 0.0025 * (1 + z))
+            if best_delta < tol:
+                n += 1
+                w_line = float(best_line["weight"])
+                weighted += sn * w_line
+                if best_line["id"] in KEY_LINE_IDS:
+                    key_hits += 1
+                if w_line >= 3.0:
+                    strong_hits += 1
+        if n >= 2 and key_hits >= 1 and strong_hits >= 2:
+            scored.append((weighted, key_hits, n, z))
+    scored.sort(reverse=True)
+    return [z for _w, _k, _n, z in scored[:maxn]]
+
+
+def detect_peaks(wave, flux, sn_threshold=2.5, maxn=30):
     hp = [f - m for f, m in zip(flux, runmean(flux, 6))]
     abs_hp = sorted(abs(x) for x in hp)
     mad = abs_hp[len(abs_hp)//2] if abs_hp else 1e-6
@@ -127,27 +200,33 @@ def detect_seeds(wave, flux, maxn=10):
     for i in range(1, len(hp) - 1):
         if hp[i] > hp[i-1] and hp[i] >= hp[i+1]:
             sn = hp[i] / noise
-            if sn > 2.5:
+            if sn > sn_threshold:
                 peaks.append((sn, wave[i]))
     peaks.sort(reverse=True)
-    peaks = peaks[:20]
-    cand = []
-    for sn, obs in peaks:
-        for rest in STRONG_REST_LINES_UM:
-            z = obs / rest - 1.0
-            if 0 < z < 10:
-                cand.append(round(z, 3))
-    uniq = sorted(set(cand))
-    scored = []
-    for z in uniq:
-        n = 0; w = 0.0
-        for sn, obs in peaks:
-            if min(abs(obs - rest * (1 + z)) for rest in STRONG_REST_LINES_UM) < 0.02:
-                n += 1; w += sn
-        if n >= 2:
-            scored.append((w, n, z))
-    scored.sort(reverse=True)
-    return [z for _w, _n, z in scored[:maxn]]
+    return peaks[:maxn]
+
+
+def line_support_score(wave, flux, zcand):
+    peaks = detect_peaks(wave, flux, sn_threshold=2.3, maxn=35)
+    if not peaks:
+        return 0.0, 0, 0
+    support = 0.0
+    key_hits = 0
+    strong_hits = 0
+    for line in LINE_DEFS:
+        obs = line["rest_um"] * (1.0 + zcand)
+        if obs < wave[0] or obs > wave[-1]:
+            continue
+        best_sn, best_w = min(peaks, key=lambda p: abs(p[1] - obs))
+        tol = max(0.012, 0.0025 * (1.0 + zcand))
+        if abs(best_w - obs) < tol:
+            w_line = float(line["weight"])
+            support += best_sn * w_line
+            if line["id"] in KEY_LINE_IDS:
+                key_hits += 1
+            if w_line >= 3.0:
+                strong_hits += 1
+    return support, key_hits, strong_hits
 
 
 def modes_from_matches(matches, seeds):
@@ -184,11 +263,13 @@ def modes_from_matches(matches, seeds):
     return zbest, frac, ratio, [{"z": z, "weight": w} for z, w in uniq[:8]]
 
 
-def direct_template_score(tw, tf, zcand, templates, ngrid=120):
+def direct_template_score(tw, tf, zcand, templates, ngrid=120, z_window_frac=0.2):
     # Direct rest-frame matching score (single-z objective, no lag mixing).
     rw_t = [w / (1.0 + zcand) for w in tw]
     vals = []
     for tmpl in templates:
+        if abs(tmpl.z_ref - zcand) > z_window_frac * (1.0 + zcand):
+            continue
         rw_r = [w / (1.0 + tmpl.z_ref) for w in tmpl.wave]
         lo = max(rw_t[0], rw_r[0], 0.35)
         hi = min(rw_t[-1], rw_r[-1], 3.35)
@@ -211,6 +292,10 @@ def direct_template_score(tw, tf, zcand, templates, ngrid=120):
     return sum(vals[:k]) / k
 
 
+def count_near_templates(templates, zcand, z_window_frac=0.2):
+    return sum(1 for t in templates if abs(t.z_ref - zcand) <= z_window_frac * (1.0 + zcand))
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser()
@@ -221,7 +306,7 @@ def main():
     targets_csv = repo / 'data' / 'targets.csv'
     sub_path = repo / 'data' / 'redshift-submissions.ndjson'
     spectrum_dir = Path('/Users/sunfengwu/jwst_cycle4/emerald_cy4/media/emerald_msa_ptg-2026/diver_prism_plots')
-    out_json = spectrum_dir / 'missing_redshift_scan_summary.json'
+    out_json = repo / 'data' / 'missing_redshift_scan_summary.json'
 
     # template set from submissions high/medium
     template_z = {}
@@ -359,7 +444,7 @@ def main():
             for z0 in seeds[:4]:
                 z = max(0.0, z0 - 0.05)
                 while z <= min(10.0, z0 + 0.05) + 1e-12:
-                    sdir = direct_template_score(tw, tf, z, templates, ngrid=120)
+                    sdir = direct_template_score(tw, tf, z, templates, ngrid=120, z_window_frac=0.2)
                     if sdir > best_single_score:
                         best_single_score = sdir
                         z_best_single = z
@@ -368,17 +453,37 @@ def main():
             z0 = z_best
             z = max(0.0, z0 - 0.08)
             while z <= min(10.0, z0 + 0.08) + 1e-12:
-                sdir = direct_template_score(tw, tf, z, templates, ngrid=120)
+                sdir = direct_template_score(tw, tf, z, templates, ngrid=120, z_window_frac=0.2)
                 if sdir > best_single_score:
                     best_single_score = sdir
                     z_best_single = z
                 z += 0.005
 
-        if z_best_single is None or top_corr < 0.35:
+        near_template_count = 0
+        support_score = 0.0
+        support_key_hits = 0
+        support_strong_hits = 0
+        if z_best_single is not None:
+            near_template_count = count_near_templates(templates, z_best_single, z_window_frac=0.2)
+            support_score, support_key_hits, support_strong_hits = line_support_score(tw, tf, z_best_single)
+
+        if z_best_single is None or top_corr < 0.35 or near_template_count < 3:
             label = 'ambiguous'
-        elif frac >= 0.50 and ratio >= 1.35 and top_corr >= 0.60 and best_single_score >= 0.50:
+        elif (
+            frac >= 0.50 and ratio >= 1.35 and top_corr >= 0.60 and best_single_score >= 0.50
+            and near_template_count >= 8 and support_key_hits >= 3 and support_score >= 180
+        ):
             label = 'high_confidence'
-        elif frac >= 0.32 and ratio >= 1.10 and top_corr >= 0.45 and best_single_score >= 0.42:
+        elif (
+            frac >= 0.32 and ratio >= 1.10 and top_corr >= 0.45 and best_single_score >= 0.42
+            and near_template_count >= 4 and support_key_hits >= 2 and support_score >= 120
+        ):
+            label = 'medium_confidence'
+        elif (
+            best_single_score >= 0.62 and near_template_count >= 10 and support_key_hits >= 4
+            and support_strong_hits >= 5 and support_score >= 240
+        ):
+            # Rescue physically obvious line-rich solutions when corr-mode mixing is unstable.
             label = 'medium_confidence'
         else:
             label = 'ambiguous'
@@ -388,6 +493,10 @@ def main():
             'z_auto': z_best_single,
             'z_mode': z_best,
             'direct_template_score': best_single_score,
+            'near_template_count': near_template_count,
+            'line_support_score': support_score,
+            'line_support_key_hits': support_key_hits,
+            'line_support_strong_hits': support_strong_hits,
             'label': label,
             'top_corr': top_corr,
             'mode_fraction': frac,
