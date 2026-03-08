@@ -44,10 +44,19 @@ function toStoredSubmission(row: unknown): StoredRedshiftSubmission | null {
     if (!raw || typeof raw !== "object") {
       return {} as Record<string, string>;
     }
-    const entries = Object.entries(raw as Record<string, unknown>).filter(
-      ([key, value]) => typeof key === "string" && typeof value === "string" && key.trim() && value.trim()
-    );
-    return Object.fromEntries(entries.map(([key, value]) => [key, value.trim()]));
+    const labels: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof key !== "string" || typeof value !== "string") {
+        continue;
+      }
+      const cleanKey = key.trim();
+      const cleanValue = value.trim();
+      if (!cleanKey || !cleanValue) {
+        continue;
+      }
+      labels[cleanKey] = cleanValue;
+    }
+    return labels;
   })();
   const confidenceRaw = normalizeText(typeof record.confidence === "string" ? record.confidence : "");
   const confidence: StoredRedshiftSubmission["confidence"] =
