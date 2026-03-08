@@ -89,6 +89,7 @@ export const RedshiftSubmissionInputSchema = z.object({
   source_id: z.string().trim().min(1).optional(),
   z_best: z.number().finite().gt(-1).lt(20),
   selected_line_ids: z.array(z.string().trim().min(1)).default([]),
+  custom_line_labels: z.record(z.string().trim().min(1), z.string().trim().min(1).max(120)).optional(),
   confidence: z.enum(["low", "medium", "high"]).optional(),
   reporter_name: z.string().trim().min(1).max(120),
   reporter_email: z

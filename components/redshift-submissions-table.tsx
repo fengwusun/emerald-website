@@ -25,6 +25,19 @@ function formatDate(value: string): string {
   });
 }
 
+function formatLineLabel(
+  lineId: string,
+  customLineLabels: Record<string, string>
+): string {
+  if (lineId in customLineLabels) {
+    return customLineLabels[lineId];
+  }
+  if (lineId.startsWith("custom_")) {
+    return "Custom line";
+  }
+  return lineId;
+}
+
 export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredRedshiftSubmission[] }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -107,7 +120,13 @@ export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredR
               <td>{item.z_best.toFixed(3)}</td>
               <td>{item.reporter_name || "-"}</td>
               <td>{item.confidence || "-"}</td>
-              <td>{item.selected_line_ids.length > 0 ? item.selected_line_ids.join(", ") : "-"}</td>
+              <td>
+                {item.selected_line_ids.length > 0
+                  ? item.selected_line_ids
+                      .map((lineId) => formatLineLabel(lineId, item.custom_line_labels))
+                      .join(", ")
+                  : "-"}
+              </td>
               <td>{formatDate(item.submitted_at)}</td>
               <td>{item.comment || "-"}</td>
             </tr>

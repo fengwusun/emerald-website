@@ -13,6 +13,7 @@ export type StoredRedshiftSubmission = {
   source_id: string;
   z_best: number;
   selected_line_ids: string[];
+  custom_line_labels: Record<string, string>;
   confidence: "low" | "medium" | "high" | "";
   reporter_name: string;
   reporter_email: string;
@@ -38,6 +39,16 @@ function toStoredSubmission(row: unknown): StoredRedshiftSubmission | null {
   const selectedLineIds = Array.isArray(record.selected_line_ids)
     ? record.selected_line_ids.filter((value): value is string => typeof value === "string")
     : [];
+  const customLineLabels = (() => {
+    const raw = record.custom_line_labels;
+    if (!raw || typeof raw !== "object") {
+      return {} as Record<string, string>;
+    }
+    const entries = Object.entries(raw as Record<string, unknown>).filter(
+      ([key, value]) => typeof key === "string" && typeof value === "string" && key.trim() && value.trim()
+    );
+    return Object.fromEntries(entries.map(([key, value]) => [key, value.trim()]));
+  })();
   const confidenceRaw = normalizeText(typeof record.confidence === "string" ? record.confidence : "");
   const confidence: StoredRedshiftSubmission["confidence"] =
     confidenceRaw === "low" || confidenceRaw === "medium" || confidenceRaw === "high" ? confidenceRaw : "";
@@ -50,6 +61,7 @@ function toStoredSubmission(row: unknown): StoredRedshiftSubmission | null {
     source_id: normalizeText(typeof record.source_id === "string" ? record.source_id : ""),
     z_best: Math.round(zBestRaw * 1e3) / 1e3,
     selected_line_ids: selectedLineIds,
+    custom_line_labels: customLineLabels,
     confidence,
     reporter_name: normalizeText(typeof record.reporter_name === "string" ? record.reporter_name : ""),
     reporter_email: normalizeText(typeof record.reporter_email === "string" ? record.reporter_email : ""),
@@ -94,6 +106,7 @@ export async function appendRedshiftSubmission(
     source_id: normalizeText(input.source_id),
     z_best: Math.round(input.z_best * 1e3) / 1e3,
     selected_line_ids: input.selected_line_ids,
+    custom_line_labels: input.custom_line_labels ?? {},
     confidence: input.confidence ?? "",
     reporter_name: normalizeText(input.reporter_name),
     reporter_email: normalizeText(input.reporter_email).toLowerCase(),

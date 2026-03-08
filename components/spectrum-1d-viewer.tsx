@@ -209,8 +209,9 @@ function percentileYRange(
   }
 
   const span = Math.max(1e-20, hi - lo);
-  const pad = span * paddingFraction;
-  return [lo - pad, hi + pad];
+  const padBottom = span * (paddingFraction * (2 / 3)); // 20% when paddingFraction=0.3
+  const padTop = span * (paddingFraction * (5 / 3)); // 50% when paddingFraction=0.3
+  return [lo - padBottom, hi + padTop];
 }
 
 export function Spectrum1DViewer({
@@ -744,6 +745,11 @@ export function Spectrum1DViewer({
     setSubmitError(null);
     setSubmitMessage(null);
     try {
+      const trustedCustomLabels = Object.fromEntries(
+        customLines
+          .filter((line) => trustedLineIds.includes(line.id))
+          .map((line) => [line.id, line.name])
+      );
       const response = await fetch(withBasePath("/api/redshift-submissions"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -753,6 +759,7 @@ export function Spectrum1DViewer({
           source_id: payload.meta.source_id,
           z_best: templateZ,
           selected_line_ids: trustedLineIds,
+          custom_line_labels: trustedCustomLabels,
           confidence: effectiveConfidence,
           reporter_name: reporterNameTrimmed,
           comment: comment || undefined,
