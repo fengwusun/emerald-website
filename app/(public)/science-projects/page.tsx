@@ -16,6 +16,7 @@ const SHEET_MAX_HEIGHT = 760;
 
 export default async function ScienceProjectsPage() {
   const projects = await fetchScienceProjectsFromSheet();
+  const lastSync = new Date().toUTCString();
 
   // +2 accounts for the header row and the example/instruction rows
   const sheetRows = projects.length + 2;
@@ -55,7 +56,8 @@ export default async function ScienceProjectsPage() {
         <section className="science-projects-grid">
           <p className="muted" style={{ gridColumn: "1 / -1", marginBottom: 0 }}>
             The following project cards are automatically generated from the Google
-            Sheet above and refreshed every 24 hours.
+            Sheet above. Our site re-fetches every 24 hours.{" "}
+            <span style={{ fontSize: "0.82rem" }}>Last fetched: {lastSync}</span>
           </p>
           {projects.map((project) => (
             <article key={project.id} className="card science-project-card">

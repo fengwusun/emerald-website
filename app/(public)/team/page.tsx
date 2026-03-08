@@ -1,11 +1,17 @@
 import { loadCoiMembers } from "@/lib/data";
+import { TeamMailIcon, MailAllButton, TeamPasswordDialog } from "@/components/team-mail-button";
 
 export default function TeamPage() {
   const members = loadCoiMembers();
+  const allNames = members.filter((m) => m.email).map((m) => m.name);
 
   return (
     <div className="grid">
-      <h1>Team</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+        <h1 style={{ margin: 0 }}>Team</h1>
+        <MailAllButton names={allNames} />
+      </div>
+      <TeamPasswordDialog />
       <p className="muted">
         Co-I roster and collaborating members from the JADES / CONGRESS survey
         community.
@@ -13,7 +19,10 @@ export default function TeamPage() {
       <section className="grid grid-2">
         {members.map((member) => (
           <article className="card" key={member.name}>
-            <h2>{member.name}</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
+              <h2>{member.name}</h2>
+              {member.email && <TeamMailIcon name={member.name} />}
+            </div>
             {member.role !== "Co-Investigator" ? (
               <p>
                 <strong>{member.role}</strong>

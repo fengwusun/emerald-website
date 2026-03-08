@@ -134,12 +134,13 @@ export default async function ObservingPlanPage() {
       ? diverStatus.rows
       : FALLBACK_DIVER_ROWS;
   const usingFallback = !emeraldStatus || !diverStatus;
+  const lastFetched = new Date().toUTCString();
   const reportNotes = [
     emeraldStatus?.reportTimestamp
-      ? `GO-7935 report: ${emeraldStatus.reportTimestamp}`
+      ? `GO-7935 STScI report: ${emeraldStatus.reportTimestamp}`
       : null,
     diverStatus?.reportTimestamp
-      ? `GO-8018 report: ${diverStatus.reportTimestamp}`
+      ? `GO-8018 STScI report: ${diverStatus.reportTimestamp}`
       : null
   ].filter(Boolean) as string[];
 
@@ -251,8 +252,11 @@ export default async function ObservingPlanPage() {
       <section className="card">
         <h2>Current Observation and Visit Status</h2>
         <p className="muted">
-          Auto-synced from STScI visit status reports every 24 hours.
-          {reportNotes.length > 0 ? ` ${reportNotes.join(" | ")}` : ""}
+          Auto-fetched from STScI visit status pages (our site re-fetches every 24 hours;
+          STScI updates reports on their own schedule).
+          {reportNotes.length > 0 && (<><br />{reportNotes.join(" | ")}</>)}
+          <br />
+          <span style={{ fontSize: "0.82rem" }}>Last fetched by our site: {lastFetched}</span>
         </p>
         {usingFallback ? (
           <p className="muted">

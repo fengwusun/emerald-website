@@ -245,6 +245,9 @@ export function Spectrum1DViewer({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [smoothingEnabled, setSmoothingEnabled] = useState(false);
   const [smoothingSigmaInput, setSmoothingSigmaInput] = useState("2.0");
+  const [customLines, setCustomLines] = useState<Array<{ id: string; name: string; restUm: number }>>([]);
+  const [customLineName, setCustomLineName] = useState("");
+  const [customLineWavelength, setCustomLineWavelength] = useState("");
   const plotRef = useRef<HTMLDivElement | null>(null);
   const templateZRef = useRef(0);
   const templateLineByShapeIndexRef = useRef<Map<number, EmissionLine>>(new Map());
@@ -466,8 +469,16 @@ export function Spectrum1DViewer({
         const overlayZ = templateZRef.current;
         const canShowOverlay = showLines && Number.isFinite(overlayZ) && overlayZ > -0.999;
 
+        const customLineEmissions: EmissionLine[] = customLines.map((cl) => ({
+          ...cl,
+          color: "rgba(190,60,210,0.72)"
+        }));
+
         const visibleLines = canShowOverlay
-          ? EMISSION_LINES.filter((line) => displayLineIds.includes(line.id))
+          ? [
+              ...EMISSION_LINES.filter((line) => displayLineIds.includes(line.id)),
+              ...customLineEmissions
+            ]
               .map((line) => ({ line, obsUm: line.restUm * (1 + overlayZ) }))
               .filter(({ obsUm }) => obsUm >= xMin && obsUm <= xMax)
               .sort(
@@ -650,6 +661,7 @@ export function Spectrum1DViewer({
     showLines,
     smoothingEnabled,
     smoothingSigmaInput,
+    customLines,
     selectedKey
   ]);
 
@@ -679,6 +691,16 @@ export function Spectrum1DViewer({
       .finally(() => {
         suppressRelayoutRef.current = false;
       });
+  }
+
+  function addCustomLine() {
+    const wl = parseFloat(customLineWavelength);
+    if (!Number.isFinite(wl) || wl <= 0 || !customLineName.trim()) return;
+    const restUm = wl / 1e4; // Å → µm
+    const id = `custom_${Date.now()}`;
+    setCustomLines((prev) => [...prev, { id, name: customLineName.trim(), restUm }]);
+    setCustomLineName("");
+    setCustomLineWavelength("");
   }
 
   function applyManualZFromInput(raw: string, normalizeInput: boolean) {
@@ -817,6 +839,76 @@ export function Spectrum1DViewer({
             );
           })}
         </div>
+      </section>
+
+      <section className="card" style={{ background: "#fdfaff", boxShadow: "none" }}>
+        <div style={{ display: "flex", gap: "0.65rem", alignItems: "center", flexWrap: "wrap" }}>
+          <strong>Custom Lines</strong>
+          <span className="muted" style={{ fontSize: "0.85rem" }}>shown in violet, drag to fit z like built-in lines</span>
+        </div>
+        <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+          <label style={{ flex: "1 1 140px" }}>
+            Name
+            <input
+              type="text"
+              placeholder="e.g. [O I]"
+              value={customLineName}
+              onChange={(e) => setCustomLineName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomLine(); } }}
+            />
+          </label>
+          <label style={{ flex: "1 1 140px" }}>
+            Rest λ (Å)
+            <input
+              type="number"
+              step="0.1"
+              min="100"
+              placeholder="e.g. 6300"
+              value={customLineWavelength}
+              onChange={(e) => setCustomLineWavelength(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomLine(); } }}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={addCustomLine}
+            disabled={!customLineName.trim() || !customLineWavelength.trim()}
+            style={{ flex: "0 0 auto", alignSelf: "flex-end" }}
+          >
+            Add line
+          </button>
+        </div>
+        {customLines.length > 0 && (
+          <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+            {customLines.map((cl) => (
+              <span
+                key={cl.id}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "0.3rem",
+                  background: "#faf0ff", border: "1px solid #d9b0f0",
+                  borderRadius: "8px", padding: "0.2rem 0.5rem", fontSize: "0.82rem"
+                }}
+              >
+                {cl.name}{" "}
+                <span className="muted" style={{ fontSize: "0.76rem" }}>
+                  {cl.restUm < 1
+                    ? `${Number((cl.restUm * 1e4).toPrecision(5))} Å`
+                    : `${Number(cl.restUm.toPrecision(5))} µm`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCustomLines((prev) => prev.filter((l) => l.id !== cl.id))}
+                  style={{ padding: "0 0.25rem", fontSize: "0.78rem",
+                    border: "none", background: "transparent",
+                    color: "#8040a0", cursor: "pointer", lineHeight: 1 }}
+                  aria-label={`Remove ${cl.name}`}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="card" style={{ background: "#f7fbff", boxShadow: "none" }}>
@@ -969,6 +1061,34 @@ export function Spectrum1DViewer({
               </label>
             );
           })}
+          {customLines.map((cl) => {
+            const checked = trustedLineIds.includes(cl.id);
+            return (
+              <label key={cl.id} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      setTrustedLineIds((prev) => (prev.includes(cl.id) ? prev : [...prev, cl.id]));
+                      return;
+                    }
+                    setTrustedLineIds((prev) => prev.filter((id) => id !== cl.id));
+                  }}
+                  style={{ width: "auto" }}
+                />
+                <span
+                  className="tag"
+                  style={{ borderColor: "#d9b0f0", background: "#faf0ff", fontWeight: 500 }}
+                >
+                  {cl.name}{" "}
+                  {cl.restUm < 1
+                    ? `${Number((cl.restUm * 1e4).toPrecision(4))}`
+                    : `${Number(cl.restUm.toPrecision(4))}µm`}
+                </span>
+              </label>
+            );
+          })}
         </div>
         <label>
           Comment
@@ -976,11 +1096,11 @@ export function Spectrum1DViewer({
             value={comment}
             onChange={(event) => setComment(event.target.value)}
             rows={3}
-            placeholder="Optional notes, e.g., AGN, absorption features, Balmer jump/break, line asymmetry, low S/N."
+            placeholder="Optional notes, e.g., AGN, absorption features, Balmer jump/break, line asymmetry, low S/N, other lines identified."
           />
         </label>
         <p className="muted" style={{ marginTop: "-0.2rem", marginBottom: 0 }}>
-          Example notes: AGN candidate, absorption-dominated, Balmer jump/break seen, Lyα asymmetric.
+          Example notes: AGN candidate, absorption-dominated, Balmer jump/break seen, Lyα asymmetric, other lines identified.
         </p>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           <button
