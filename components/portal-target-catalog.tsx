@@ -47,7 +47,14 @@ export function PortalTargetCatalog() {
   }
 
   if (!targets) {
-    return <p className="muted">Loading target catalog...</p>;
+    return (
+      <div className="loading-inline">
+        <span className="spinner" aria-hidden="true" />
+        <p className="muted" style={{ margin: 0 }}>
+          Loading target catalog...
+        </p>
+      </div>
+    );
   }
 
   return <PortalTargetTable targets={targets} />;

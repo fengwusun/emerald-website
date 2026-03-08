@@ -14,7 +14,8 @@ export default function PortalTargetsPage() {
         <a href={withBasePath("/fitsmap/index.html")} target="_blank" rel="noreferrer">
           Open FitsMap
         </a>
-        .
+        . Download{" "}
+        <a href={withBasePath("/api/targets/catalog/download")}>Latest Target Catalog (CSV)</a>.
       </p>
       <PortalTargetCatalog />
     </div>

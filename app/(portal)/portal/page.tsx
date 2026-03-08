@@ -10,7 +10,10 @@ export default function PortalHomePage() {
           Use the portal to search cross-program targets and inspect per-object
           metadata plus ancillary previews.
         </p>
-        <p><Link href={withBasePath("/portal/targets")}>Go to Target Catalog</Link></p>
+        <p style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem", margin: 0 }}>
+          <Link href={withBasePath("/portal/targets")}>Go to Target Catalog</Link>
+          <a href={withBasePath("/api/targets/catalog/download")}>Download Latest Target Catalog (CSV)</a>
+        </p>
       </section>
 
       <section className="card">

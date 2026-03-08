@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Spectrum1DViewer } from "@/components/spectrum-1d-viewer";
 import { withBasePath } from "@/lib/base-path";
@@ -29,6 +29,7 @@ export function SpectraBrowser({
   defaultEmeraldId: string;
   allTags: string[];
 }) {
+  const [liveSources, setLiveSources] = useState(sources);
   const [selectedId, setSelectedId] = useState(defaultEmeraldId);
   const [search, setSearch]         = useState("");
   const [tagFilter, setTagFilter]   = useState<string[]>([]);
@@ -38,8 +39,12 @@ export function SpectraBrowser({
   const [coneEnabled, setConeEnabled] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setLiveSources(sources);
+  }, [sources]);
+
   const filteredSources = useMemo(() => {
-    let result = sources;
+    let result = liveSources;
 
     // 1. Text search
     const q = search.trim().toLowerCase();
@@ -79,7 +84,7 @@ export function SpectraBrowser({
     }
 
     return result;
-  }, [sources, search, tagFilter, coneEnabled, coneRa, coneDec, coneRadius]);
+  }, [liveSources, search, tagFilter, coneEnabled, coneRa, coneDec, coneRadius]);
 
   function toggleTag(tag: string) {
     setTagFilter((prev) =>
@@ -88,7 +93,7 @@ export function SpectraBrowser({
   }
 
   const selectedSource =
-    sources.find((s) => s.emeraldId === selectedId) ?? sources[0] ?? null;
+    liveSources.find((s) => s.emeraldId === selectedId) ?? liveSources[0] ?? null;
 
   const filteredIndex = filteredSources.findIndex(
     (s) => s.emeraldId === selectedId
@@ -130,7 +135,7 @@ export function SpectraBrowser({
         <div className="spectra-browser__sidebar-header">
           <strong>Sources</strong>
           <span className="muted" style={{ fontSize: "0.82rem" }}>
-            {filteredSources.length} / {sources.length}
+            {filteredSources.length} / {liveSources.length}
           </span>
         </div>
 
@@ -306,6 +311,15 @@ export function SpectraBrowser({
               zSpec={selectedSource.zSpec}
               sourceName={selectedSource.name}
               emeraldId={selectedSource.emeraldId}
+              onSubmittedRedshift={(nextZ) => {
+                setLiveSources((prev) =>
+                  prev.map((source) =>
+                    source.emeraldId === selectedSource.emeraldId
+                      ? { ...source, zSpec: nextZ }
+                      : source
+                  )
+                );
+              }}
             />
           ) : (
             <div className="card">

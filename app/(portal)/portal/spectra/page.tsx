@@ -2,6 +2,8 @@ import { loadTargets } from "@/lib/data";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
 import { SpectraBrowser } from "./spectra-browser";
 
+export const dynamic = "force-dynamic";
+
 export type SpectraSourceEntry = {
   emeraldId: string;
   name: string;
