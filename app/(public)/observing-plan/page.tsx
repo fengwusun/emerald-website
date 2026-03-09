@@ -170,6 +170,25 @@ export default async function ObservingPlanPage() {
           <li>On-source time per mask: about 4.9 hours</li>
           <li>Total on-source time (6 masks): about 29.4 hours</li>
         </ul>
+
+        <h3>EMERALD Pointing Footprints</h3>
+        <p className="muted" style={{ marginTop: "0.25rem" }}>
+          Footprint visualization of EMERALD pointings in GOODS-N.
+        </p>
+        <Image
+          src={withBasePath("/figures/emerald_pointing_footprints.png")}
+          alt="EMERALD pointing footprints in GOODS-N"
+          width={1275}
+          height={1293}
+          unoptimized
+          style={{
+            width: "100%",
+            maxWidth: "100%",
+            height: "auto",
+            borderRadius: "10px",
+            border: "1px solid #cbe6de"
+          }}
+        />
       </section>
 
       <section className="card">
