@@ -175,20 +175,22 @@ export default async function ObservingPlanPage() {
         <p className="muted" style={{ marginTop: "0.25rem" }}>
           Footprint visualization of EMERALD pointings in GOODS-N.
         </p>
-        <Image
-          src={withBasePath("/figures/emerald_pointing_footprints.png")}
-          alt="EMERALD pointing footprints in GOODS-N"
-          width={1275}
-          height={1293}
-          unoptimized
-          style={{
-            width: "100%",
-            maxWidth: "100%",
-            height: "auto",
-            borderRadius: "10px",
-            border: "1px solid #cbe6de"
-          }}
-        />
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <Image
+            src={withBasePath("/figures/emerald_pointing_footprints.png")}
+            alt="EMERALD pointing footprints in GOODS-N"
+            width={1275}
+            height={1293}
+            unoptimized
+            style={{
+              width: "60%",
+              maxWidth: "100%",
+              height: "auto",
+              borderRadius: "10px",
+              border: "1px solid #cbe6de"
+            }}
+          />
+        </div>
       </section>
 
       <section className="card">
