@@ -21,8 +21,21 @@ from statistics import median
 C_CGS = 2.99792458e10
 JY_TO_CGS = 1e-23
 SQRT2PI = math.sqrt(2.0 * math.pi)
+SQRT8LN2 = math.sqrt(8.0 * math.log(2.0))
 R_OIII_5008_4960 = 2.98
 R_SIII_9533_9071 = 2.44
+
+# de Graaff et al. (2025) polynomial used by unite for PRISM point-source R(lambda),
+# with lambda in microns and coefficients in descending order.
+PRISM_R_COEFFS = (
+    0.6588751520824567,
+    -13.160715906787065,
+    105.20050050555237,
+    -429.52868537465565,
+    959.0507565400321,
+    -1043.4918213547285,
+    480.90575759267125,
+)
 
 EMISSION_LINES = [
     ("lya_1216", "Lyα", 0.121567),
@@ -46,6 +59,7 @@ EMISSION_LINES = [
     ("halpha", "Hα", 0.656461),
     ("nii_6585", "[N II]", 0.658527),
     ("sii_6725", "[S II]", 0.672548),
+    ("hei_7065", "He I", 0.706518),
     ("siii_9071", "[S III]", 0.90711),
     ("siii_9533", "[S III]", 0.953321),
     ("padelta", "Paδ", 1.00521),
@@ -75,8 +89,13 @@ BLEND_GROUPS = [
     ("ha_nii_sii", ["halpha", "nii_6585", "sii_6725"]),
 ]
 
-# Enforce non-negative Gaussian amplitudes for these forbidden-line components.
-NONNEGATIVE_FORBIDDEN_COMPONENTS = {"nii_6585", "sii_6725"}
+# Enforce non-negative Gaussian amplitudes for forbidden-line components.
+# Forbidden lines are identified by bracket notation in the display name.
+NONNEGATIVE_FORBIDDEN_COMPONENTS = {
+    line_id
+    for line_id, line_name, _rest_um in EMISSION_LINES
+    if ("[" in line_name or "]" in line_name)
+}
 
 
 @dataclass
@@ -226,6 +245,27 @@ def gaussian(x: float, mu: float, sigma: float) -> float:
     return math.exp(-0.5 * z * z)
 
 
+def polyval_desc(coeffs: tuple[float, ...], x: float) -> float:
+    y = 0.0
+    for c in coeffs:
+        y = y * x + c
+    return y
+
+
+def prism_resolving_power(obs_um: float) -> float:
+    r = polyval_desc(PRISM_R_COEFFS, obs_um)
+    if not math.isfinite(r) or r <= 0:
+        return 100.0
+    return r
+
+
+def prism_lsf_sigma_a(obs_a: float) -> float:
+    obs_um = obs_a / 1e4
+    r = prism_resolving_power(obs_um)
+    fwhm_a = obs_a / r
+    return max(fwhm_a / SQRT8LN2, 1e-6)
+
+
 def solve_linear(a: list[list[float]], b: list[float]) -> list[float]:
     n = len(b)
     aug = [a[i][:] + [b[i]] for i in range(n)]
@@ -298,7 +338,14 @@ def frange(start: float, stop: float, step: float):
         yield start + i * step
 
 
-def measure_one_line(spec: Spectrum, line_id: str, name: str, rest_um: float, z: float) -> LineMeasurement:
+def measure_one_line(
+    spec: Spectrum,
+    line_id: str,
+    name: str,
+    rest_um: float,
+    z: float,
+    profile_mode: str,
+) -> LineMeasurement:
     obs_a = rest_um * (1.0 + z) * 1e4
     if not (spec.wave_a[0] <= obs_a <= spec.wave_a[-1]):
         return LineMeasurement(
@@ -344,8 +391,9 @@ def measure_one_line(spec: Spectrum, line_id: str, name: str, rest_um: float, z:
     trap_err = trapz_err(x_line, s_line)
     trap_snr = trap_flux / trap_err if (math.isfinite(trap_err) and trap_err > 0) else float("nan")
 
-    sigma_min = max(0.45 * fwhm_guess, spec.median_step_a * 1.1)
-    sigma_max = max(2.2 * fwhm_guess, sigma_min + spec.median_step_a)
+    sigma_lsf = prism_lsf_sigma_a(obs_a)
+    sigma_min_intr = 0.0 if profile_mode == "unresolved" else max(0.15 * fwhm_guess, 0.0)
+    sigma_max_intr = 0.0 if profile_mode == "unresolved" else max(2.2 * fwhm_guess, sigma_min_intr + spec.median_step_a)
     sigma_step = max(spec.median_step_a / 3.0, 2.0)
     shift_max = max(0.8 * fwhm_guess, spec.median_step_a)
     shift_step = max(spec.median_step_a / 3.0, 2.0)
@@ -357,13 +405,18 @@ def measure_one_line(spec: Spectrum, line_id: str, name: str, rest_um: float, z:
     best_cov = None
     best_redchi2 = float("inf")
 
-    for sig in frange(sigma_min, sigma_max, sigma_step):
+    sigma_intr_grid = [0.0] if profile_mode == "unresolved" else list(frange(sigma_min_intr, sigma_max_intr, sigma_step))
+    for sig_intr in sigma_intr_grid:
+        sig_eff = math.sqrt(sig_intr * sig_intr + sigma_lsf * sigma_lsf)
         for shift in frange(-shift_max, shift_max, shift_step):
             mu = obs_a + shift
-            design = [[1.0, x - x0, gaussian(x, mu, sig)] for x in x_line]
+            design = [[1.0, x - x0, gaussian(x, mu, sig_eff)] for x in x_line]
             coeffs, cov, redchi2 = linear_fit_with_cov(design, y_raw, s_line)
+            # Enforce physical non-negativity for forbidden lines during fit selection.
+            if line_id in NONNEGATIVE_FORBIDDEN_COMPONENTS and coeffs[2] < 0:
+                continue
             if redchi2 < best_redchi2:
-                best = (coeffs, sig, shift)
+                best = (coeffs, sig_eff, shift)
                 best_cov = cov
                 best_redchi2 = redchi2
 
@@ -414,7 +467,13 @@ def measure_one_line(spec: Spectrum, line_id: str, name: str, rest_um: float, z:
     )
 
 
-def measure_blend_group(spec: Spectrum, group_id: str, line_ids: list[str], z: float) -> BlendMeasurement:
+def measure_blend_group(
+    spec: Spectrum,
+    group_id: str,
+    line_ids: list[str],
+    z: float,
+    profile_mode: str,
+) -> BlendMeasurement:
     centers = [LINE_REST_UM[line_id] * (1.0 + z) * 1e4 for line_id in line_ids]
     c_lo = min(centers)
     c_hi = max(centers)
@@ -454,8 +513,8 @@ def measure_blend_group(spec: Spectrum, group_id: str, line_ids: list[str], z: f
     trap_err = trapz_err(x_line, s_line)
     trap_snr = trap_flux / trap_err if (math.isfinite(trap_err) and trap_err > 0) else float("nan")
 
-    sigma_min = max(0.45 * fwhm_guess, spec.median_step_a * 1.1)
-    sigma_max = max(2.2 * fwhm_guess, sigma_min + spec.median_step_a)
+    sigma_min_intr = 0.0 if profile_mode == "unresolved" else max(0.15 * fwhm_guess, 0.0)
+    sigma_max_intr = 0.0 if profile_mode == "unresolved" else max(2.2 * fwhm_guess, sigma_min_intr + spec.median_step_a)
     sigma_step = max(spec.median_step_a / 3.0, 2.0)
     shift_max = max(0.8 * fwhm_guess, spec.median_step_a)
     shift_step = max(spec.median_step_a / 3.0, 2.0)
@@ -467,10 +526,11 @@ def measure_blend_group(spec: Spectrum, group_id: str, line_ids: list[str], z: f
     best_cov = None
     best_redchi2 = float("inf")
 
-    def constrained_fit_for_grid(sig: float, shift: float):
+    def constrained_fit_for_grid(sig_intr: float, shift: float):
         x0_local = x0
         y_local = y_raw
         s_local = s_line
+        sigma_eff_by_line = [math.sqrt(sig_intr * sig_intr + prism_lsf_sigma_a(c + shift) ** 2) for c in centers]
 
         # Active-set loop: constrained forbidden components that go negative are fixed to 0.
         active = [True] * len(line_ids)
@@ -480,7 +540,7 @@ def measure_blend_group(spec: Spectrum, group_id: str, line_ids: list[str], z: f
             for x in x_line:
                 row = [1.0, x - x0_local]
                 for i in active_ids:
-                    row.append(gaussian(x, centers[i] + shift, sig))
+                    row.append(gaussian(x, centers[i] + shift, sigma_eff_by_line[i]))
                 design.append(row)
 
             coeffs_sub, cov_sub, redchi2_sub = linear_fit_with_cov(design, y_local, s_local)
@@ -508,27 +568,36 @@ def measure_blend_group(spec: Spectrum, group_id: str, line_ids: list[str], z: f
                     for i, amp in enumerate(amps):
                         if amp == 0.0:
                             continue
-                        model += amp * gaussian(xv, centers[i] + shift, sig)
+                        model += amp * gaussian(xv, centers[i] + shift, sigma_eff_by_line[i])
                     r = (yv - model) / sv
                     chi2 += r * r
-                return (cont0, cont1, amps, cov_sub, active_ids, chi2 / dof if dof > 0 else redchi2_sub)
+                return (
+                    cont0,
+                    cont1,
+                    amps,
+                    cov_sub,
+                    active_ids,
+                    sigma_eff_by_line,
+                    chi2 / dof if dof > 0 else redchi2_sub,
+                )
 
             for i in to_deactivate:
                 active[i] = False
 
-    for sig in frange(sigma_min, sigma_max, sigma_step):
+    sigma_intr_grid = [0.0] if profile_mode == "unresolved" else list(frange(sigma_min_intr, sigma_max_intr, sigma_step))
+    for sig_intr in sigma_intr_grid:
         for shift in frange(-shift_max, shift_max, shift_step):
-            cont0, cont1, amps, cov, active_ids, redchi2 = constrained_fit_for_grid(sig, shift)
+            cont0, cont1, amps, cov, active_ids, sigma_eff_by_line, redchi2 = constrained_fit_for_grid(sig_intr, shift)
             if redchi2 < best_redchi2:
-                best = (cont0, cont1, amps, sig, shift, active_ids)
+                best = (cont0, cont1, amps, sigma_eff_by_line, shift, active_ids)
                 best_cov = cov
                 best_redchi2 = redchi2
 
     if best is None:
         return BlendMeasurement(group_id, ",".join(line_ids), c_lo, c_hi, len(idx_line), len(idx_cont), trap_flux, trap_err, trap_snr, float("nan"), float("nan"), float("nan"), float("nan"), "")
 
-    cont0, cont1, amps, sigma_a, _shift, active_ids = best
-    component_fluxes = [amp * SQRT2PI * sigma_a for amp in amps]
+    cont0, cont1, amps, sigma_eff_by_line, _shift, active_ids = best
+    component_fluxes = [amp * SQRT2PI * sigma_eff_by_line[i] for i, amp in enumerate(amps)]
     gauss_flux_sum = sum(component_fluxes)
     comp_text = ",".join(f"{lid}:{val:.3e}" for lid, val in zip(line_ids, component_fluxes))
 
@@ -548,7 +617,18 @@ def measure_blend_group(spec: Spectrum, group_id: str, line_ids: list[str], z: f
                 except Exception:
                     ok = False
         if ok:
-            var = (SQRT2PI * sigma_a) ** 2 * var_amp_sum
+            # Propagate only amplitude covariance (fixed sigma_eff on the grid).
+            var = 0.0
+            active_pos = {line_i: k for k, line_i in enumerate(active_ids)}
+            for i in range(p):
+                if i not in active_pos:
+                    continue
+                for j in range(p):
+                    if j not in active_pos:
+                        continue
+                    ci = SQRT2PI * sigma_eff_by_line[i]
+                    cj = SQRT2PI * sigma_eff_by_line[j]
+                    var += ci * cj * best_cov[2 + active_pos[i]][2 + active_pos[j]]
             if var > 0:
                 gauss_flux_err = math.sqrt(var)
 
@@ -620,6 +700,12 @@ def main() -> int:
     ap.add_argument("--z", type=float, required=True)
     ap.add_argument("--output-json", type=Path, default=None)
     ap.add_argument("--snr-threshold", type=float, default=3.0)
+    ap.add_argument(
+        "--profile-mode",
+        choices=["free", "unresolved"],
+        default="free",
+        help="Gaussian intrinsic-width mode. 'unresolved' fixes intrinsic sigma=0 and uses prism LSF only.",
+    )
     args = ap.parse_args()
 
     if args.output_json is None:
@@ -657,9 +743,15 @@ def main() -> int:
             print(json.dumps(payload, indent=2))
         return 0
 
-    rows = [measure_one_line(spec, line_id, name, rest_um, args.z) for line_id, name, rest_um in EMISSION_LINES]
+    rows = [
+        measure_one_line(spec, line_id, name, rest_um, args.z, args.profile_mode)
+        for line_id, name, rest_um in EMISSION_LINES
+    ]
     mark_blends(rows)
-    blend_rows = [measure_blend_group(spec, gid, members, args.z) for gid, members in BLEND_GROUPS]
+    blend_rows = [
+        measure_blend_group(spec, gid, members, args.z, args.profile_mode)
+        for gid, members in BLEND_GROUPS
+    ]
     by_id = {r.line_id: r for r in rows}
     blend_by_id = {b.group_id: b for b in blend_rows}
 
@@ -757,6 +849,7 @@ def main() -> int:
                 "z": args.z,
                 "wavelength_range_A": [spec.wave_a[0], spec.wave_a[-1]],
                 "snr_threshold": args.snr_threshold,
+                "profile_mode": args.profile_mode,
                 "units": {
                     "wavelength": "A",
                     "flux": "erg/s/cm^2",
