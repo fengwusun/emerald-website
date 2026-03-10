@@ -51,6 +51,12 @@ type PrismFitsAssetRecord = {
   kind: "s2d" | "x1d";
 };
 
+type PrismLineFitAssetRecord = {
+  sourceId: string;
+  observationNumber: string;
+  filename: string;
+};
+
 type GratingCsvAssetRecord = {
   sourceId: string;
   observationNumber: string;
@@ -169,12 +175,18 @@ function composeViNotes(row: Record<string, string>): string {
   return dedupe(pieces).join(" | ");
 }
 
-function buildDiverSpectrumAsset(sourceId: string) {
+function buildDiverSpectrumAsset(sourceId: string): TargetRecord["ancillary_assets"][number] | null {
+  const relativeFile = `${DIVER_GRATING_DIR}/spectrum_plot_${sourceId}.png`;
+  const absoluteFile = path.join(localMediaBaseDir(), relativeFile);
+  if (!fs.existsSync(absoluteFile)) {
+    return null;
+  }
+
   return {
     asset_type: "spectrum" as const,
     label: "DIVER Grating Spectrum",
-    storage_key: `${DIVER_GRATING_DIR}/spectrum_plot_${sourceId}.png`,
-    preview_url: `/api/targets/image?file=${DIVER_GRATING_DIR}/spectrum_plot_${sourceId}.png`,
+    storage_key: relativeFile,
+    preview_url: `/api/targets/image?file=${relativeFile}`,
     access_level: "team" as const
   };
 }
@@ -198,7 +210,7 @@ function buildDiverGratingCsvDownloadAsset(
   profile: { column: string; slug: string }
 ) {
   return {
-    asset_type: "other" as const,
+    asset_type: "spectrum" as const,
     label: `DIVER Grating 1D CSV (o${record.observationNumber}, ${record.filter}/${record.grating}, ${profile.slug})`,
     storage_key: `${DIVER_GRATING_DIR}/${record.filename}`,
     spectrum_profile: profile.column,
@@ -222,6 +234,16 @@ function buildPrismFitsAsset(record: PrismFitsAssetRecord) {
   return {
     asset_type: "other" as const,
     label: `${label} (o${record.observationNumber})`,
+    storage_key: `${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    preview_url: `/api/targets/file?file=${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
+    access_level: "team" as const
+  };
+}
+
+function buildPrismLineFitJsonAsset(record: PrismLineFitAssetRecord) {
+  return {
+    asset_type: "other" as const,
+    label: `DIVER PRISM Line Fit JSON (o${record.observationNumber})`,
     storage_key: `${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
     preview_url: `/api/targets/file?file=${DIVER_PRISM_PLOT_DIR}/${record.filename}`,
     access_level: "team" as const
@@ -264,7 +286,11 @@ function attachAssets(
 }
 
 function attachDiverSpectrumAsset(target: TargetRecord, sourceId: string): TargetRecord {
-  return attachAssets(target, [buildDiverSpectrumAsset(sourceId)]);
+  const spectrumAsset = buildDiverSpectrumAsset(sourceId);
+  if (!spectrumAsset) {
+    return target;
+  }
+  return attachAssets(target, [spectrumAsset]);
 }
 
 function localMediaBaseDir(): string {
@@ -282,6 +308,9 @@ function loadPrismAssetsBySourceId(): Map<string, PrismAssetRecord[]> {
   const prismPattern = /^jw_o(\d+)_([0-9]+)_.*prism.*\.png$/i;
 
   for (const filename of files) {
+    if (/_joint_lsf_fit\.png$/i.test(filename)) {
+      continue;
+    }
     const match = filename.match(prismPattern);
     if (!match) {
       continue;
@@ -396,6 +425,41 @@ function loadPrismFitsAssetsBySourceId(): Map<string, PrismFitsAssetRecord[]> {
       sourceId: match[2],
       filename,
       kind
+    };
+    const existing = bySourceId.get(record.sourceId) ?? [];
+    existing.push(record);
+    bySourceId.set(record.sourceId, existing);
+  }
+
+  for (const [sourceId, records] of bySourceId.entries()) {
+    bySourceId.set(
+      sourceId,
+      records.sort((a, b) => a.filename.localeCompare(b.filename))
+    );
+  }
+
+  return bySourceId;
+}
+
+function loadPrismLineFitJsonAssetsBySourceId(): Map<string, PrismLineFitAssetRecord[]> {
+  const prismDir = path.join(localMediaBaseDir(), DIVER_PRISM_PLOT_DIR);
+  if (!fs.existsSync(prismDir)) {
+    return new Map();
+  }
+
+  const files = fs.readdirSync(prismDir);
+  const bySourceId = new Map<string, PrismLineFitAssetRecord[]>();
+  const lineFitPattern = /^jw_o(\d+)_([0-9]+)_.*joint_lsf_fit.*\.json$/i;
+
+  for (const filename of files) {
+    const match = filename.match(lineFitPattern);
+    if (!match) {
+      continue;
+    }
+    const record: PrismLineFitAssetRecord = {
+      observationNumber: match[1],
+      sourceId: match[2],
+      filename
     };
     const existing = bySourceId.get(record.sourceId) ?? [];
     existing.push(record);
@@ -545,6 +609,7 @@ export function loadTargets(): TargetRecord[] {
   const gratingCsvAssetsBySourceId = loadGratingCsvAssetsBySourceId();
   const prismAssetsBySourceId = loadPrismAssetsBySourceId();
   const prismFitsAssetsBySourceId = loadPrismFitsAssetsBySourceId();
+  const prismLineFitJsonAssetsBySourceId = loadPrismLineFitJsonAssetsBySourceId();
   const photometryAssetsBySourceId = loadPhotometryAssetsBySourceId();
 
   const records = parse(csvRaw, {
@@ -582,6 +647,7 @@ export function loadTargets(): TargetRecord[] {
     const gratingCsvRecords = gratingCsvAssetsBySourceId.get(sourceId) ?? [];
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
+    const prismLineFitRecords = prismLineFitJsonAssetsBySourceId.get(sourceId) ?? [];
     const photometryRecords = photometryAssetsBySourceId.get(sourceId) ?? [];
     const gratingCsvAssets = gratingCsvRecords.flatMap((record) =>
       record.profiles.flatMap((profile) => [
@@ -591,11 +657,13 @@ export function loadTargets(): TargetRecord[] {
     );
     const prismAssets = prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord));
     const prismFitsAssets = prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord));
+    const prismLineFitJsonAssets = prismLineFitRecords.map((record) => buildPrismLineFitJsonAsset(record));
     const photometryAssets = photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord));
     let merged = attachAssets(baseTarget, [
       ...gratingCsvAssets,
       ...prismAssets,
       ...prismFitsAssets,
+      ...prismLineFitJsonAssets,
       ...photometryAssets
     ]);
 
@@ -650,6 +718,7 @@ export function loadTargets(): TargetRecord[] {
     ...gratingCsvAssetsBySourceId.keys(),
     ...prismAssetsBySourceId.keys(),
     ...prismFitsAssetsBySourceId.keys(),
+    ...prismLineFitJsonAssetsBySourceId.keys(),
     ...photometryAssetsBySourceId.keys()
   ]);
 
@@ -662,6 +731,7 @@ export function loadTargets(): TargetRecord[] {
     const gratingCsvRecords = gratingCsvAssetsBySourceId.get(sourceId) ?? [];
     const prismRecords = prismAssetsBySourceId.get(sourceId) ?? [];
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
+    const prismLineFitRecords = prismLineFitJsonAssetsBySourceId.get(sourceId) ?? [];
     const photometryRecords = photometryAssetsBySourceId.get(sourceId) ?? [];
     const hasGrating = viRecord !== undefined || gratingCsvRecords.length > 0;
     const hasPrism = prismRecords.length > 0 || prismFitsRecords.length > 0;
@@ -669,8 +739,9 @@ export function loadTargets(): TargetRecord[] {
       ...(hasGrating ? [DIVER_GRATING_INSTRUMENT] : []),
       ...(hasPrism ? [DIVER_PRISM_INSTRUMENT] : [])
     ]);
+    const diverSpectrumAsset = hasGrating ? buildDiverSpectrumAsset(sourceId) : null;
     const ancillaryAssets = [
-      ...(hasGrating ? [buildDiverSpectrumAsset(sourceId)] : []),
+      ...(diverSpectrumAsset ? [diverSpectrumAsset] : []),
       ...gratingCsvRecords.flatMap((record) =>
         record.profiles.flatMap((profile) => [
           buildDiverGratingCsvSpectrumAsset(record, profile),
@@ -679,6 +750,7 @@ export function loadTargets(): TargetRecord[] {
       ),
       ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord)),
       ...prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord)),
+      ...prismLineFitRecords.map((record) => buildPrismLineFitJsonAsset(record)),
       ...photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord))
     ];
     const noteParts = [

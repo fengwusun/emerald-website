@@ -13,7 +13,14 @@ function isImageAssetPath(pathname: string): boolean {
 function ancillaryTagLabel(assetType: string, storageKey: string): string {
   const key = storageKey.toLowerCase();
   if (key.includes("jades_photometry/")) {
-    return "Photometry";
+    return "info";
+  }
+  if (
+    key.includes("diver_prism_plots/") &&
+    key.endsWith(".json") &&
+    (key.includes("lineflux") || key.includes("joint_lsf_fit"))
+  ) {
+    return "info";
   }
   if (assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(key)) {
     return "spec-plot";

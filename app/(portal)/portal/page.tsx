@@ -13,6 +13,7 @@ export default function PortalHomePage() {
         <p style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem", margin: 0 }}>
           <Link href={withBasePath("/portal/targets")}>Go to Target Catalog</Link>
           <a href={withBasePath("/api/targets/catalog/download")}>Download Latest Target Catalog (CSV)</a>
+          <a href={withBasePath("/api/linefits/download")}>Download Best-fit Line Table (CSV)</a>
         </p>
       </section>
 
