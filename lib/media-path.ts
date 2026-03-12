@@ -1,4 +1,4 @@
-const DEFAULT_LOCAL_MEDIA_DIR = "/Users/sunfengwu/Downloads/emerald_msa_ptg-2026";
+const DEFAULT_LOCAL_MEDIA_DIR = "/Users/sunfengwu/jwst_cycle4/emerald_cy4/media/emerald_msa_ptg-2026";
 const DEFAULT_SERVER_MEDIA_DIR = "/data/emerald/media";
 
 export function getMediaBaseDir(): string {
@@ -8,4 +8,3 @@ export function getMediaBaseDir(): string {
     (process.env.NODE_ENV === "production" ? DEFAULT_SERVER_MEDIA_DIR : DEFAULT_LOCAL_MEDIA_DIR)
   );
 }
-

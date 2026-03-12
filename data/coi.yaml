@@ -13,6 +13,11 @@
   affiliation: Consejo Superior de Investigaciones Cientificas
   email: "arribas@cab.inta-csic.es"
 
+- name: Fuyan Bian
+  role: Co-Investigator
+  affiliation: European Southern Observatory - Chile
+  email: "Fuyan.Bian@eso.org"
+
 - name: Rachana Bhatawdekar
   role: Co-Investigator
   affiliation: ESA, European Space Astronomy Centre
@@ -51,7 +56,7 @@
 - name: Mirko Curti
   role: Co-Investigator
   affiliation: INAF - Astrophysics and Space Science Observatory
-  email: "mirko.curti@eso.org"
+  email: "mirko.curti@inaf.it"
 
 - name: Emma Curtis-Lake
   role: Co-Investigator
@@ -137,6 +142,11 @@
   role: Co-Investigator
   affiliation: University of Cambridge
   email: "rm665@cam.ac.uk"
+
+- name: Pablo G. Pérez-González
+  role: Co-Investigator
+  affiliation: Centro de Astrobiologia - CAB
+  email: "pgperez@cab.inta-csic.es"
 
 - name: Maria Pudoka
   role: Co-Investigator

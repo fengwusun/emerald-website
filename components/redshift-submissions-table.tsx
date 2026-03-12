@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { withBasePath } from "@/lib/base-path";
 import type { StoredRedshiftSubmission } from "@/lib/redshift-submissions-store";
 
@@ -25,19 +25,27 @@ function formatDate(value: string): string {
   });
 }
 
+function formatLineLabel(
+  lineId: string,
+  customLineLabels: Record<string, string>
+): string {
+  if (lineId in customLineLabels) {
+    return customLineLabels[lineId];
+  }
+  if (lineId.startsWith("custom_")) {
+    return "Custom line";
+  }
+  return lineId;
+}
+
 export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredRedshiftSubmission[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-
-  useEffect(() => {
-    const pageParam = Number(searchParams.get("page") ?? "1");
-    const pageSizeParam = Number(searchParams.get("pageSize") ?? "25");
-    setPage(Number.isFinite(pageParam) && pageParam > 0 ? Math.trunc(pageParam) : 1);
-    setPageSize(PAGE_SIZE_OPTIONS.has(pageSizeParam) ? pageSizeParam : 25);
-  }, [searchParams]);
+  const pageParam = Number(searchParams.get("page") ?? "1");
+  const pageSizeParam = Number(searchParams.get("pageSize") ?? "25");
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.trunc(pageParam) : 1;
+  const pageSize = PAGE_SIZE_OPTIONS.has(pageSizeParam) ? pageSizeParam : 25;
 
   const totalPages = Math.max(1, Math.ceil(submissions.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -47,24 +55,21 @@ export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredR
     [submissions, start, pageSize]
   );
 
-  useEffect(() => {
+  const updateQuery = (nextPage: number, nextPageSize: number) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (safePage > 1) {
-      params.set("page", String(safePage));
+    if (nextPage > 1) {
+      params.set("page", String(nextPage));
     } else {
       params.delete("page");
     }
-    if (pageSize !== 25) {
-      params.set("pageSize", String(pageSize));
+    if (nextPageSize !== 25) {
+      params.set("pageSize", String(nextPageSize));
     } else {
       params.delete("pageSize");
     }
     const nextQuery = params.toString();
-    const currentQuery = searchParams.toString();
-    if (nextQuery !== currentQuery) {
-      router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
-    }
-  }, [safePage, pageSize, pathname, router, searchParams]);
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   return (
     <section className="card" style={{ overflowX: "auto" }}>
@@ -75,8 +80,8 @@ export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredR
           <select
             value={String(pageSize)}
             onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
+              const nextPageSize = Number(event.target.value);
+              updateQuery(1, nextPageSize);
             }}
             style={{ width: "auto" }}
           >
@@ -115,7 +120,13 @@ export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredR
               <td>{item.z_best.toFixed(3)}</td>
               <td>{item.reporter_name || "-"}</td>
               <td>{item.confidence || "-"}</td>
-              <td>{item.selected_line_ids.length > 0 ? item.selected_line_ids.join(", ") : "-"}</td>
+              <td>
+                {item.selected_line_ids.length > 0
+                  ? item.selected_line_ids
+                      .map((lineId) => formatLineLabel(lineId, item.custom_line_labels))
+                      .join(", ")
+                  : "-"}
+              </td>
               <td>{formatDate(item.submitted_at)}</td>
               <td>{item.comment || "-"}</td>
             </tr>
@@ -127,7 +138,7 @@ export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredR
         <button
           className="secondary"
           disabled={safePage <= 1}
-          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          onClick={() => updateQuery(Math.max(1, safePage - 1), pageSize)}
         >
           Previous
         </button>
@@ -137,7 +148,7 @@ export function RedshiftSubmissionsTable({ submissions }: { submissions: StoredR
         <button
           className="secondary"
           disabled={safePage >= totalPages}
-          onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+          onClick={() => updateQuery(Math.min(totalPages, safePage + 1), pageSize)}
         >
           Next
         </button>

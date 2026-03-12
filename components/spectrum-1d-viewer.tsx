@@ -34,6 +34,18 @@ type SpectrumResponse = {
   templates: unknown[];
 };
 
+type LineFitModelSegment = {
+  label: string;
+  line_ids: string[];
+  x_um?: number[];
+  model_jy?: number[];
+};
+
+type LineFitResponse = {
+  linefit_key?: string;
+  model_segments_detected?: LineFitModelSegment[];
+};
+
 declare global {
   interface Window {
     Plotly?: {
@@ -210,8 +222,9 @@ function percentileYRange(
   }
 
   const span = Math.max(1e-20, hi - lo);
-  const pad = span * paddingFraction;
-  return [lo - pad, hi + pad];
+  const padBottom = span * (paddingFraction * (2 / 3)); // 20% when paddingFraction=0.3
+  const padTop = span * (paddingFraction * (5 / 3)); // 50% when paddingFraction=0.3
+  return [lo - padBottom, hi + padTop];
 }
 
 export function Spectrum1DViewer({
@@ -235,6 +248,7 @@ export function Spectrum1DViewer({
   const [error, setError] = useState<string | null>(null);
   const [plotReady, setPlotReady] = useState(false);
   const [showLines, setShowLines] = useState(true);
+  const [showBestFitModel, setShowBestFitModel] = useState(false);
   const [displayLineIds, setDisplayLineIds] = useState<string[]>(EMISSION_LINES.map((line) => line.id));
   const [trustedLineIds, setTrustedLineIds] = useState<string[]>([]);
   const [templateZ, setTemplateZ] = useState(0);
@@ -249,6 +263,7 @@ export function Spectrum1DViewer({
   const [smoothingEnabled, setSmoothingEnabled] = useState(false);
   const [smoothingSigmaInput, setSmoothingSigmaInput] = useState("2.0");
   const [customLines, setCustomLines] = useState<Array<{ id: string; name: string; restUm: number }>>([]);
+  const [lineFitPayload, setLineFitPayload] = useState<LineFitResponse | null>(null);
   const [customLineName, setCustomLineName] = useState("");
   const [customLineWavelength, setCustomLineWavelength] = useState("");
   const plotRef = useRef<HTMLDivElement | null>(null);
@@ -366,6 +381,38 @@ export function Spectrum1DViewer({
   }, [selectedAsset]);
 
   useEffect(() => {
+    if (!selectedAsset?.storageKey) {
+      setLineFitPayload(null);
+      return;
+    }
+    const selectedStorageKey = selectedAsset.storageKey;
+    let cancelled = false;
+    async function loadLinefit() {
+      try {
+        const response = await fetch(
+          `${withBasePath("/api/spectra/1d/linefit")}?key=${encodeURIComponent(selectedStorageKey)}`
+        );
+        if (!response.ok) {
+          if (!cancelled) setLineFitPayload(null);
+          return;
+        }
+        const next = (await response.json()) as LineFitResponse;
+        if (!cancelled) {
+          setLineFitPayload(next);
+        }
+      } catch {
+        if (!cancelled) {
+          setLineFitPayload(null);
+        }
+      }
+    }
+    void loadLinefit();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAsset]);
+
+  useEffect(() => {
     if (!payload || !plotRef.current) {
       return;
     }
@@ -385,7 +432,7 @@ export function Spectrum1DViewer({
         const y = smoothingEnabled ? gaussianSmooth(yRaw, sigma) : yRaw;
         const yerr = smoothingEnabled ? gaussianSmooth(yerrRaw, sigma) : yerrRaw;
 
-        const traces = [
+        const traces: Array<Record<string, unknown>> = [
           {
             x,
             y,
@@ -438,6 +485,24 @@ export function Spectrum1DViewer({
             showlegend: false
           }
         ];
+
+        if (showBestFitModel && lineFitPayload?.model_segments_detected?.length) {
+          for (const segment of lineFitPayload.model_segments_detected) {
+            if (!segment.x_um || !segment.model_jy || segment.x_um.length !== segment.model_jy.length) {
+              continue;
+            }
+            traces.push({
+              x: segment.x_um,
+              y: segment.model_jy,
+              type: "scatter",
+              mode: "lines",
+              name: "Best-fit model",
+              line: { color: "#111111", width: 1.6 },
+              hovertemplate: "lambda=%{x:.5f} um<br>model=%{y:.5e} Jy<extra></extra>",
+              showlegend: false
+            });
+          }
+        }
 
         const xMin = x.length > 0 ? Math.min(...x) : 0;
         const xMax = x.length > 0 ? Math.max(...x) : 0;
@@ -528,7 +593,9 @@ export function Spectrum1DViewer({
         const layout = {
           title: {
             text: `${selectedAssetLabel || "PRISM x1d"} (JADES-${currentPayload.meta.source_id})`,
-            y: 0.975
+            y: 0.97,
+            yanchor: "top",
+            pad: { t: 8, b: 0 }
           },
           uirevision: selectedKey,
           margin: { t: 86, r: 18, b: 52, l: 72 },
@@ -659,9 +726,11 @@ export function Spectrum1DViewer({
     payload,
     applyTemplatePositions,
     selectedAssetLabel,
+    lineFitPayload,
     displayLineIds,
     trustedLineIds,
     showLines,
+    showBestFitModel,
     smoothingEnabled,
     smoothingSigmaInput,
     customLines,
@@ -745,6 +814,11 @@ export function Spectrum1DViewer({
     setSubmitError(null);
     setSubmitMessage(null);
     try {
+      const trustedCustomLabels = Object.fromEntries(
+        customLines
+          .filter((line) => trustedLineIds.includes(line.id))
+          .map((line) => [line.id, line.name])
+      );
       const response = await fetch(withBasePath("/api/redshift-submissions"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -754,6 +828,7 @@ export function Spectrum1DViewer({
           source_id: payload.meta.source_id,
           z_best: templateZ,
           selected_line_ids: trustedLineIds,
+          custom_line_labels: trustedCustomLabels,
           confidence: effectiveConfidence,
           reporter_name: reporterNameTrimmed,
           comment: comment || undefined,
@@ -808,6 +883,13 @@ export function Spectrum1DViewer({
             />
             Show lines
           </label>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setShowBestFitModel((prev) => !prev)}
+          >
+            {showBestFitModel ? "Hide best-fit model" : "Show best-fit model"}
+          </button>
           <button
             type="button"
             className="secondary"
