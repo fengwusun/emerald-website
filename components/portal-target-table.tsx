@@ -191,6 +191,19 @@ function firstImagePreview(target: TargetRecord): string | null {
 function spectrumPreviewForInstrument(target: TargetRecord, instrument: string): string | null {
   const instrumentLower = instrument.toLowerCase();
 
+  if (instrumentLower === "g140m/f070lp") {
+    const gratingPlot = target.ancillary_assets.find((asset) => {
+      if (asset.asset_type !== "spectrum" || !asset.preview_url) {
+        return false;
+      }
+      const key = asset.storage_key.toLowerCase();
+      return key.includes("diver_grating_plots/") && /spectrum_plot_.*\.(png|jpg|jpeg)$/i.test(key);
+    });
+    if (gratingPlot?.preview_url) {
+      return withBasePathForApiUrl(gratingPlot.preview_url);
+    }
+  }
+
   const preferredSpectrum = target.ancillary_assets.find((asset) => {
     if (asset.asset_type !== "spectrum" || !asset.preview_url) {
       return false;
