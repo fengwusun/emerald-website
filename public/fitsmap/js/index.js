@@ -136,7 +136,7 @@ const map = L.map("map", {
     crs: L.CRS.FitsMap,
     minZoom: 0,
     preferCanvas: true,
-    layers: [nircam_rgb, diver_obs001_visit001, diver_obs001_visit002, diver_obs002_visit001, diver_obs002_visit002, diver_obs003_plan, emerald_plan, diver_spec_obs1_visit1_Layer, diver_spec_obs1_visit2_Layer],
+    layers: [nircam_rgb, diver_obs001_visit001, diver_obs001_visit002, diver_obs002_visit001, diver_obs002_visit002, diver_obs003_plan, emerald_plan],
 });
 
 // Scale Bar Control ===========================================================
@@ -434,6 +434,14 @@ var overlaysTree = {
       selectAllCheckbox: true,
       children: [
         { label: 'NIRSpec G395M obs1-6 plan', layer:emerald_plan },
+      ]
+    },
+    {
+      label: '<b>Countour Overlays</b>',
+      collapsed: false,
+      selectAllCheckbox: false,
+      children: [
+        { label: 'VLA 1.4 GHz', layer:vla_1_4_GHz },
       ]
     }
   ]
