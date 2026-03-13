@@ -60,7 +60,8 @@ declare global {
 const PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.35.2.min.js";
 const EMISSION_LINES: EmissionLine[] = [
   { id: "lya_1216", name: "Lyα", restUm: 0.121567, color: "rgba(206,76,47,0.45)" },
-  { id: "civ_1549", name: "[C IV]", restUm: 0.154948, color: "rgba(222,110,64,0.45)" },
+  { id: "civ_1548", name: "CIV", restUm: 0.1548187, color: "rgba(222,110,64,0.45)" },
+  { id: "civ_1551", name: "CIV", restUm: 0.1550772, color: "rgba(222,120,72,0.45)" },
   { id: "niv_1486", name: "N IV]", restUm: 0.148650, color: "rgba(216,102,58,0.45)" },
   { id: "heii_1640", name: "He II", restUm: 0.164042, color: "rgba(224,120,70,0.45)" },
   { id: "oiii_1661", name: "O III]", restUm: 0.166081, color: "rgba(224,132,75,0.45)" },
@@ -150,7 +151,7 @@ function roundRedshift(value: number): number {
 }
 
 function formatLineLabel(line: EmissionLine): string {
-  if (line.restUm > 1) {
+ if (line.restUm > 1) {
     return `${line.name} ${Number(line.restUm.toPrecision(4))}`;
   }
   return `${line.name} ${Number((line.restUm * 1e4).toPrecision(4))}`;
