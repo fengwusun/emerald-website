@@ -10,3 +10,7 @@ tsconfig.tsbuildinfo
 !.env.example
 .DS_Store
 .codex/
+tmp/
+data/reference/
+scripts/analyses_script/
+scripts/__pycache__/

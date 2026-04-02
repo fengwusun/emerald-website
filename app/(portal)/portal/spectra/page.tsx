@@ -37,9 +37,7 @@ export default function SpectraPage() {
       quickTags: getQuickTagsForTarget(t),
       assets: t.ancillary_assets
         .filter(
-          (a) =>
-            /_x1d\.json$/i.test(a.storage_key) ||
-            /_x1d\.fits$/i.test(a.storage_key)
+          (a) => /_x1d\.json$/i.test(a.storage_key)
         )
         .map((a) => ({
           storageKey: a.storage_key,

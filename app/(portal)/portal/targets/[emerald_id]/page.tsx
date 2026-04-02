@@ -60,9 +60,7 @@ export default async function TargetDetailPage({
       : target.instruments.map((instrument) => ({ instrument, status: target.status }));
   const oneDSpectrumAssets = target.ancillary_assets
     .filter(
-      (asset) =>
-        /_x1d\.fits$/i.test(asset.storage_key) ||
-        /_x1d\.json$/i.test(asset.storage_key)
+      (asset) => /_x1d\.json$/i.test(asset.storage_key)
     )
     .map((asset) => ({
       storageKey: asset.storage_key,

@@ -244,6 +244,7 @@ export function Spectrum1DViewer({
     assets[0] ? `${assets[0].storageKey}::${assets[0].profile ?? ""}` : ""
   );
   const [payload, setPayload] = useState<SpectrumResponse | null>(null);
+  const [payloadAssetKey, setPayloadAssetKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plotReady, setPlotReady] = useState(false);
@@ -341,12 +342,20 @@ export function Spectrum1DViewer({
   useEffect(() => {
     if (!selectedAsset?.storageKey) return;
     const activeAsset = selectedAsset;
+    const nextAssetKey = `${activeAsset.storageKey}::${activeAsset.profile ?? ""}`;
     let cancelled = false;
 
     async function load() {
       setLoading(true);
       setError(null);
       setPlotReady(false);
+      setPayload(null);
+      setPayloadAssetKey("");
+      activeSpectrumKeyRef.current = "";
+      baseRangeRef.current = null;
+      if (plotRef.current && window.Plotly) {
+        window.Plotly.purge(plotRef.current);
+      }
       try {
         const response = await fetch(
           `${withBasePath("/api/spectra/1d")}?key=${encodeURIComponent(activeAsset.storageKey)}${
@@ -361,10 +370,12 @@ export function Spectrum1DViewer({
         }
         if (!cancelled) {
           setPayload(next);
+          setPayloadAssetKey(nextAssetKey);
         }
       } catch (err) {
         if (!cancelled) {
           setPayload(null);
+          setPayloadAssetKey("");
           setError(err instanceof Error ? err.message : "Unexpected error");
         }
       } finally {
@@ -413,7 +424,8 @@ export function Spectrum1DViewer({
   }, [selectedAsset]);
 
   useEffect(() => {
-    if (!payload || !plotRef.current) {
+    const selectedAssetKey = selectedAsset ? `${selectedAsset.storageKey}::${selectedAsset.profile ?? ""}` : "";
+    if (!payload || !plotRef.current || !selectedAssetKey || payloadAssetKey !== selectedAssetKey) {
       return;
     }
     let cancelled = false;
@@ -440,7 +452,7 @@ export function Spectrum1DViewer({
             mode: "lines",
             name: "Flux",
             line: { color: "#0f8f6f", width: 1.7 },
-            hovertemplate: "lambda=%{x:.5f} um<br>flux=%{y:.5e} Jy<extra></extra>"
+            hovertemplate: `lambda=%{x:.5f} ${currentPayload.meta.wavelength_unit}<br>flux=%{y:.5e} ${currentPayload.meta.flux_unit}<extra></extra>`
           },
           {
             x,
@@ -450,7 +462,7 @@ export function Spectrum1DViewer({
             marker: { size: 2.5, color: "#1aa781", opacity: 0.55 },
             name: "Samples",
             visible: "legendonly",
-            hovertemplate: "lambda=%{x:.5f} um<br>flux=%{y:.5e} Jy<extra></extra>"
+            hovertemplate: `lambda=%{x:.5f} ${currentPayload.meta.wavelength_unit}<br>flux=%{y:.5e} ${currentPayload.meta.flux_unit}<extra></extra>`
           },
           {
             x,
@@ -498,7 +510,7 @@ export function Spectrum1DViewer({
               mode: "lines",
               name: "Best-fit model",
               line: { color: "#111111", width: 1.6 },
-              hovertemplate: "lambda=%{x:.5f} um<br>model=%{y:.5e} Jy<extra></extra>",
+              hovertemplate: `lambda=%{x:.5f} ${currentPayload.meta.wavelength_unit}<br>model=%{y:.5e} ${currentPayload.meta.flux_unit}<extra></extra>`,
               showlegend: false
             });
           }
@@ -734,7 +746,9 @@ export function Spectrum1DViewer({
     smoothingEnabled,
     smoothingSigmaInput,
     customLines,
-    selectedKey
+    selectedKey,
+    selectedAsset,
+    payloadAssetKey
   ]);
 
   useEffect(() => {

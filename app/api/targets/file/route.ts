@@ -5,6 +5,8 @@ import { getMediaBaseDir } from "@/lib/media-path";
 
 function contentTypeForExtension(ext: string): string {
   switch (ext) {
+    case ".pdf":
+      return "application/pdf";
     case ".fits":
       return "application/fits";
     case ".csv":
@@ -25,7 +27,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const file = url.searchParams.get("file") ?? "";
 
-  if (!/^[-a-zA-Z0-9_./]+\.(fits|csv|json|png|jpg|jpeg)$/i.test(file)) {
+  if (!/^[-a-zA-Z0-9_./]+\.(pdf|fits|csv|json|png|jpg|jpeg)$/i.test(file)) {
     return NextResponse.json({ error: "Invalid file parameter" }, { status: 400 });
   }
 

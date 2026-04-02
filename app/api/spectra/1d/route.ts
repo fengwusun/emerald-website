@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Spectrum cache JSON not found. Run scripts/build_prism_x1d_cache.py to generate it."
+            "Spectrum cache JSON not found. Run the corresponding x1d cache build script to generate it."
         },
         { status: 404 }
       );

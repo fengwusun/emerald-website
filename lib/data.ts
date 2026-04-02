@@ -12,6 +12,7 @@ const EMERALD_PROGRAM_ID = "7935";
 const EMERALD_INSTRUMENT = "G395M/F290LP";
 const DIVER_GRATING_INSTRUMENT = "G140M/F070LP";
 const DIVER_PRISM_INSTRUMENT = "PRISM";
+const EMERALD_GRATING_DIR = "emerald_grating_plots";
 const DIVER_GRATING_DIR = "diver_grating_plots";
 const DIVER_PRISM_PLOT_DIR = "diver_prism_plots";
 const JADES_PHOTOMETRY_DIR = "jades_photometry";
@@ -55,6 +56,16 @@ type PrismLineFitAssetRecord = {
   sourceId: string;
   observationNumber: string;
   filename: string;
+};
+
+type EmeraldGratingAssetRecord = {
+  emeraldId: string;
+  observationNumber: string;
+  visitNumber: string;
+  filter: string;
+  grating: string;
+  filename: string;
+  kind: "plot" | "plot_pdf" | "s2d" | "x1d" | "x1d_json";
 };
 
 type GratingCsvAssetRecord = {
@@ -256,6 +267,55 @@ function buildPhotometryAsset(record: PhotometryAssetRecord) {
     label: `JADES DR5 Photometry ${record.kind}`,
     storage_key: `${JADES_PHOTOMETRY_DIR}/${record.filename}`,
     preview_url: `/api/targets/file?file=${JADES_PHOTOMETRY_DIR}/${record.filename}`,
+    access_level: "team" as const
+  };
+}
+
+function buildEmeraldGratingAsset(record: EmeraldGratingAssetRecord) {
+  if (record.kind === "plot") {
+    return {
+      asset_type: "spectrum" as const,
+      label: `EMERALD G395M Spectrum Plot (o${record.observationNumber}v${record.visitNumber}, ${record.filter}/${record.grating})`,
+      storage_key: `${EMERALD_GRATING_DIR}/${record.filename}`,
+      preview_url: `/api/targets/image?file=${EMERALD_GRATING_DIR}/${record.filename}`,
+      access_level: "team" as const
+    };
+  }
+
+  if (record.kind === "plot_pdf") {
+    return {
+      asset_type: "other" as const,
+      label: `EMERALD G395M Spectrum Plot PDF (o${record.observationNumber}v${record.visitNumber}, ${record.filter}/${record.grating})`,
+      storage_key: `${EMERALD_GRATING_DIR}/${record.filename}`,
+      preview_url: `/api/targets/file?file=${EMERALD_GRATING_DIR}/${record.filename}`,
+      access_level: "team" as const
+    };
+  }
+
+  if (record.kind === "x1d") {
+    return {
+      asset_type: "spectrum" as const,
+      label: `EMERALD G395M 1D FITS (o${record.observationNumber}v${record.visitNumber}, ${record.filter}/${record.grating})`,
+      storage_key: `${EMERALD_GRATING_DIR}/${record.filename}`,
+      preview_url: `/api/targets/file?file=${EMERALD_GRATING_DIR}/${record.filename}`,
+      access_level: "team" as const
+    };
+  }
+
+  if (record.kind === "x1d_json") {
+    return {
+      asset_type: "spectrum" as const,
+      label: `EMERALD G395M 1D (o${record.observationNumber}v${record.visitNumber}, ${record.filter}/${record.grating})`,
+      storage_key: `${EMERALD_GRATING_DIR}/${record.filename}`,
+      access_level: "team" as const
+    };
+  }
+
+  return {
+    asset_type: "other" as const,
+    label: `EMERALD G395M 2D FITS (o${record.observationNumber}v${record.visitNumber}, ${record.filter}/${record.grating})`,
+    storage_key: `${EMERALD_GRATING_DIR}/${record.filename}`,
+    preview_url: `/api/targets/file?file=${EMERALD_GRATING_DIR}/${record.filename}`,
     access_level: "team" as const
   };
 }
@@ -511,6 +571,73 @@ function loadPhotometryAssetsBySourceId(): Map<string, PhotometryAssetRecord[]> 
   return bySourceId;
 }
 
+function normalizeEmeraldAssetId(rawSourceId: string): string {
+  const numericSourceId = Number.parseInt(rawSourceId, 10);
+  if (!Number.isFinite(numericSourceId) || numericSourceId <= 0) {
+    return `EMR-${rawSourceId.replace(/^0+/, "") || rawSourceId}`;
+  }
+  return `EMR-${numericSourceId}`;
+}
+
+function loadEmeraldGratingAssetsById(): Map<string, EmeraldGratingAssetRecord[]> {
+  const emeraldDir = path.join(localMediaBaseDir(), EMERALD_GRATING_DIR);
+  if (!fs.existsSync(emeraldDir)) {
+    return new Map();
+  }
+
+  const files = fs.readdirSync(emeraldDir);
+  const byEmeraldId = new Map<string, EmeraldGratingAssetRecord[]>();
+  const pattern =
+    /^jw07935(\d{3})(\d{3})_([A-Za-z0-9]+)-([A-Za-z0-9]+)_s(\d+)(?:_(s2d|x1d))?\.(pdf|png|fits|json)$/i;
+
+  for (const filename of files) {
+    const match = filename.match(pattern);
+    if (!match) {
+      continue;
+    }
+    const kindSuffix = (match[6] ?? "").toLowerCase();
+    const extension = match[7].toLowerCase();
+    let kind: EmeraldGratingAssetRecord["kind"] | null = null;
+    if (extension === "png") {
+      kind = "plot";
+    } else if (extension === "pdf") {
+      kind = "plot_pdf";
+    } else if (extension === "json" && kindSuffix === "x1d") {
+      kind = "x1d_json";
+    } else if (kindSuffix === "x1d") {
+      kind = "x1d";
+    } else if (kindSuffix === "s2d") {
+      kind = "s2d";
+    }
+    if (!kind) {
+      continue;
+    }
+
+    const emeraldId = normalizeEmeraldAssetId(match[5]);
+    const record: EmeraldGratingAssetRecord = {
+      emeraldId,
+      observationNumber: match[1],
+      visitNumber: match[2],
+      filter: match[3].toUpperCase(),
+      grating: match[4].toUpperCase(),
+      filename,
+      kind
+    };
+    const existing = byEmeraldId.get(emeraldId) ?? [];
+    existing.push(record);
+    byEmeraldId.set(emeraldId, existing);
+  }
+
+  for (const [emeraldId, records] of byEmeraldId.entries()) {
+    byEmeraldId.set(
+      emeraldId,
+      records.sort((a, b) => a.filename.localeCompare(b.filename))
+    );
+  }
+
+  return byEmeraldId;
+}
+
 function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
   if (!fs.existsSync(VI_CATALOG_PATH)) {
     return new Map();
@@ -611,16 +738,20 @@ export function loadTargets(): TargetRecord[] {
   const prismFitsAssetsBySourceId = loadPrismFitsAssetsBySourceId();
   const prismLineFitJsonAssetsBySourceId = loadPrismLineFitJsonAssetsBySourceId();
   const photometryAssetsBySourceId = loadPhotometryAssetsBySourceId();
+  const emeraldGratingAssetsById = loadEmeraldGratingAssetsById();
 
   const records = parse(csvRaw, {
     columns: true,
     skip_empty_lines: true,
-    trim: true
+    trim: true,
+    relax_quotes: true,
+    record_delimiter: ["\r\n", "\n", "\r"]
   }) as Record<string, string>[];
 
   const targets = records.map((record) => {
     const target = TargetRecordSchema.parse(record);
     const sourceId = extractJadesSourceId(target.name);
+    const emeraldGratingRecords = emeraldGratingAssetsById.get(target.emerald_id) ?? [];
     const baseInstruments = parseInstrumentLabels(target.instrument);
     const instruments =
       target.jwst_program_id === EMERALD_PROGRAM_ID
@@ -638,9 +769,21 @@ export function loadTargets(): TargetRecord[] {
       instruments,
       observation_modes: baseObservationModes
     };
+    const emeraldGratingAssets = emeraldGratingRecords.map((record) => buildEmeraldGratingAsset(record));
+    const emeraldObservedTarget =
+      emeraldGratingAssets.length > 0
+        ? {
+            ...attachAssets(baseTarget, emeraldGratingAssets),
+            observation_modes: mergeObservationMode(
+              baseTarget.observation_modes,
+              { instrument: EMERALD_INSTRUMENT, status: "observed" },
+              true
+            )
+          }
+        : baseTarget;
 
     if (!sourceId) {
-      return baseTarget;
+      return emeraldObservedTarget;
     }
 
     const viRecord = viCatalogBySourceId.get(sourceId);
@@ -659,7 +802,7 @@ export function loadTargets(): TargetRecord[] {
     const prismFitsAssets = prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord));
     const prismLineFitJsonAssets = prismLineFitRecords.map((record) => buildPrismLineFitJsonAsset(record));
     const photometryAssets = photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord));
-    let merged = attachAssets(baseTarget, [
+    let merged = attachAssets(emeraldObservedTarget, [
       ...gratingCsvAssets,
       ...prismAssets,
       ...prismFitsAssets,

@@ -21,6 +21,15 @@ export default function PortalHomePage() {
         <h2>News</h2>
         <ul>
           <li>
+            <strong>Apr 2026</strong> — Sijia Cai processed the EMERALD
+            Obs 01, 02, and 03 G395M/F290LP data products. The reduced spectra
+            are now being incorporated into the{" "}
+            <Link href={withBasePath("/portal/targets")}>Target Catalog</Link>
+            {" "}and the{" "}
+            <Link href={withBasePath("/portal/spectra")}>Quick Interactive</Link>
+            {" "}viewer.
+          </li>
+          <li>
             <strong>Mar 2026</strong> — Yongda Zhu reduced and released the
             spectra from DIVER Obs 1 (G140M/F070LP grating, 2 masks,
             ~20.6 h per mask, 260 sources in total) and Obs 2 (PRISM/CLEAR,

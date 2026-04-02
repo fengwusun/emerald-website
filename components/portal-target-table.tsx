@@ -204,6 +204,30 @@ function spectrumPreviewForInstrument(target: TargetRecord, instrument: string):
     }
   }
 
+  if (instrumentLower === "g395m/f290lp") {
+    const emeraldPlot = target.ancillary_assets.find((asset) => {
+      if (asset.asset_type !== "spectrum" || !asset.preview_url) {
+        return false;
+      }
+      const key = asset.storage_key.toLowerCase();
+      return key.includes("emerald_grating_plots/") && /\.(png|jpg|jpeg)$/i.test(key);
+    });
+    if (emeraldPlot?.preview_url) {
+      return withBasePathForApiUrl(emeraldPlot.preview_url);
+    }
+
+    const emeraldPdf = target.ancillary_assets.find((asset) => {
+      if (!asset.preview_url) {
+        return false;
+      }
+      const key = asset.storage_key.toLowerCase();
+      return key.includes("emerald_grating_plots/") && key.endsWith(".pdf");
+    });
+    if (emeraldPdf?.preview_url) {
+      return withBasePathForApiUrl(emeraldPdf.preview_url);
+    }
+  }
+
   const preferredSpectrum = target.ancillary_assets.find((asset) => {
     if (asset.asset_type !== "spectrum" || !asset.preview_url) {
       return false;
@@ -960,9 +984,17 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                           const spectrumPreview = spectrumPreviewForInstrument(target, mode.instrument);
                           const showSpectrum =
                             (mode.instrument.toLowerCase() === "g140m/f070lp" ||
-                              mode.instrument.toLowerCase() === "prism") &&
+                              mode.instrument.toLowerCase() === "prism" ||
+                              mode.instrument.toLowerCase() === "g395m/f290lp") &&
                             spectrumPreview;
                           if (showSpectrum) {
+                            const showImageHover =
+                              mode.instrument.toLowerCase() === "g140m/f070lp" ||
+                              mode.instrument.toLowerCase() === "prism" ||
+                              mode.instrument.toLowerCase() === "g395m/f290lp";
+                            const showPdfHover =
+                              mode.instrument.toLowerCase() === "g395m/f290lp" &&
+                              /\.pdf(?:\?|$)/i.test(spectrumPreview);
                             return (
                               <span
                                 key={`${target.emerald_id}-instrument-${mode.instrument}-${mode.status}`}
@@ -977,15 +1009,51 @@ export function PortalTargetTable({ targets }: { targets: TargetRecord[] }) {
                                 >
                                   {mode.instrument}
                                 </a>
-                                <span className="hover-preview hover-preview--spectrum" role="tooltip">
-                                  <Image
-                                    src={spectrumPreview}
-                                    alt={`${target.name} ${mode.instrument} spectrum`}
-                                    width={320}
-                                    height={220}
-                                    unoptimized
-                                  />
-                                </span>
+                                {showImageHover && !showPdfHover ? (
+                                  <span className="hover-preview hover-preview--spectrum" role="tooltip">
+                                    <Image
+                                      src={spectrumPreview}
+                                      alt={`${target.name} ${mode.instrument} spectrum`}
+                                      width={320}
+                                      height={220}
+                                      unoptimized
+                                    />
+                                  </span>
+                                ) : null}
+                                {showPdfHover ? (
+                                  <span className="hover-preview hover-preview--spectrum" role="tooltip">
+                                    <object
+                                      data={spectrumPreview}
+                                      type="application/pdf"
+                                      width="480"
+                                      height="320"
+                                      aria-label={`${target.name} ${mode.instrument} spectrum preview`}
+                                      style={{
+                                        width: "480px",
+                                        height: "320px",
+                                        display: "block",
+                                        border: "1px solid #d8e0e3",
+                                        borderRadius: "10px",
+                                        background: "#ffffff"
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          width: "480px",
+                                          height: "320px",
+                                          display: "grid",
+                                          placeItems: "center",
+                                          padding: "1rem",
+                                          textAlign: "center",
+                                          color: "#4d5b57",
+                                          fontSize: "0.9rem"
+                                        }}
+                                      >
+                                        PDF preview unavailable. Click to open spectrum.
+                                      </div>
+                                    </object>
+                                  </span>
+                                ) : null}
                               </span>
                             );
                           }
