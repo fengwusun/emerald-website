@@ -1,4 +1,4 @@
-import { loadCoiMembers, loadTargets } from "../lib/data";
+import { hasValidStorageKeyPrefix, loadCoiMembers, loadTargets } from "../lib/data";
 
 function validateStorageKeys() {
   const targets = loadTargets();
@@ -6,7 +6,7 @@ function validateStorageKeys() {
 
   for (const target of targets) {
     for (const asset of target.ancillary_assets) {
-      if (!asset.storage_key.startsWith("targets/")) {
+      if (!hasValidStorageKeyPrefix(asset.storage_key)) {
         invalid.push(`${target.emerald_id}: ${asset.storage_key}`);
       }
     }

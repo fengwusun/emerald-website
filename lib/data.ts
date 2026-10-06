@@ -17,6 +17,19 @@ const DIVER_GRATING_DIR = "diver_grating_plots";
 const DIVER_PRISM_PLOT_DIR = "diver_prism_plots";
 const JADES_PHOTOMETRY_DIR = "jades_photometry";
 
+// CSV-listed assets use "targets/"; assets discovered in the media root use their media subdirectory.
+export const ASSET_STORAGE_KEY_PREFIXES: ReadonlyArray<string> = [
+  "targets/",
+  `${EMERALD_GRATING_DIR}/`,
+  `${DIVER_GRATING_DIR}/`,
+  `${DIVER_PRISM_PLOT_DIR}/`,
+  `${JADES_PHOTOMETRY_DIR}/`
+];
+
+export function hasValidStorageKeyPrefix(storageKey: string): boolean {
+  return ASSET_STORAGE_KEY_PREFIXES.some((prefix) => storageKey.startsWith(prefix));
+}
+
 const EMISSION_TAG_COLUMNS: ReadonlyArray<{ column: string; tag: string }> = [
   { column: "LyA", tag: "LyA" },
   { column: "HeII", tag: "HeII" },

@@ -1,15 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadCoiMembers, loadTargets } from "../lib/data";
+import { hasValidStorageKeyPrefix, loadCoiMembers, loadTargets } from "../lib/data";
 
 test("target catalog loads with required fields", () => {
   const targets = loadTargets();
   assert.ok(targets.length > 0);
   for (const target of targets) {
-    assert.match(target.emerald_id, /^EMR-/);
-    assert.ok(target.z_spec >= 0);
+    // EMR-<id> for EMERALD targets, DIV-<JADES id> for DIVER-only targets.
+    assert.match(target.emerald_id, /^(EMR|DIV)-\d+$/);
+    // Submitted redshifts may be negative (used to reject a wrong bot redshift); same range as the submission schema.
+    assert.ok(
+      Number.isFinite(target.z_spec) && target.z_spec > -1 && target.z_spec < 20,
+      `${target.emerald_id}: z_spec ${target.z_spec}`
+    );
     for (const asset of target.ancillary_assets) {
-      assert.match(asset.storage_key, /^targets\//);
+      assert.ok(hasValidStorageKeyPrefix(asset.storage_key), `${target.emerald_id}: ${asset.storage_key}`);
     }
   }
 });
