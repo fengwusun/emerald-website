@@ -46,7 +46,7 @@ export default function ProgramPage() {
             Field
           </p>
           <ul>
-            <li>PI: Fengwu Sun (Harvard University)</li>
+            <li>PI: Fengwu Sun (Westlake University)</li>
             <li>Instrument/Mode: NIRSpec MOS, G395M/F290LP</li>
             <li>Sample: 842 galaxies at z = 4-9 in GOODS-N</li>
             <li>External Allocation: 37.1 hours</li>
