@@ -3,36 +3,24 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
+import { groupTargetProducts } from "@/lib/product-groups";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
+import { ProductPreview } from "@/components/product-preview";
 import { Spectrum1DViewer } from "@/components/spectrum-1d-viewer";
 
-function isImageAssetPath(pathname: string): boolean {
-  return /\.(png|jpg|jpeg)(\?|$)/i.test(pathname);
-}
-
-function ancillaryTagLabel(assetType: string, storageKey: string): string {
-  const key = storageKey.toLowerCase();
-  if (key.includes("jades_photometry/")) {
-    return "info";
+function TagList({ tags, empty }: { tags: string[]; empty: string }) {
+  if (tags.length === 0) {
+    return <span className="muted">{empty}</span>;
   }
-  if (
-    key.includes("diver_prism_plots/") &&
-    key.endsWith(".json") &&
-    (key.includes("lineflux") || key.includes("joint_lsf_fit"))
-  ) {
-    return "info";
-  }
-  if (assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(key)) {
-    return "spec-plot";
-  }
-  if (assetType === "other" && /\.fits$/i.test(key)) {
-    return "spec-fits";
-  }
-  return assetType;
-}
-
-function isSpecPlotAsset(assetType: string, storageKey: string): boolean {
-  return assetType === "spectrum" && /\.(png|jpg|jpeg)$/i.test(storageKey.toLowerCase());
+  return (
+    <span className="tag-list">
+      {tags.map((tag) => (
+        <span key={tag} className="tag">
+          {tag}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 export default async function TargetDetailPage({
@@ -67,6 +55,8 @@ export default async function TargetDetailPage({
       label: asset.label,
       profile: asset.spectrum_profile
     }));
+  const productGroups = groupTargetProducts(target.ancillary_assets);
+  const bundleNote = productGroups.find((group) => group.note)?.note;
   const requestedNext = typeof resolvedSearchParams.next === "string" ? resolvedSearchParams.next : "";
   const backHref = requestedNext.startsWith("/portal/targets") ? requestedNext : "/portal/targets";
 
@@ -78,122 +68,113 @@ export default async function TargetDetailPage({
       <h1>{target.name}</h1>
       <p className="muted">{target.emerald_id}</p>
       <section className="card">
-        <p>
-          <strong>Name:</strong> {target.name}
-        </p>
-        <p>
-          <strong>Coordinates:</strong> RA {target.ra} | Dec {target.dec}
-        </p>
-        <p>
-          <strong>z_spec:</strong> {Math.abs(target.z_spec - 1) < 1e-9 ? -1 : target.z_spec}
-        </p>
-        <p>
-          <strong>JADES FitsMap:</strong>{" "}
+        <dl className="meta-grid">
+          <dt>Coordinates</dt>
+          <dd>
+            RA {target.ra} · Dec {target.dec}
+          </dd>
+          <dt>z_spec</dt>
+          <dd>{Math.abs(target.z_spec - 1) < 1e-9 ? -1 : target.z_spec}</dd>
+          <dt>Program</dt>
+          <dd>
+            JWST {target.jwst_program_id} · priority {target.priority}
+          </dd>
+          <dt>Modes</dt>
+          <dd>
+            <TagList
+              tags={observationModes.map((mode) => `${mode.instrument} · ${mode.status}`)}
+              empty="Not labeled"
+            />
+          </dd>
+          <dt>Quick tags</dt>
+          <dd>
+            <TagList tags={quickTags} empty="None" />
+          </dd>
+          <dt>Emission lines</dt>
+          <dd>
+            <TagList tags={emissionLineTags} empty="None in VI table" />
+          </dd>
+          <dt>Notes</dt>
+          <dd>{target.notes || "None"}</dd>
+        </dl>
+        <div className="product-row" style={{ marginTop: "0.75rem" }}>
           <a
+            className="btn-link"
             href={`https://jades.idies.jhu.edu/goods-n/?ra=${target.ra}&dec=${target.dec}&zoom=11`}
             target="_blank"
             rel="noreferrer"
           >
-            Open source in GOODS-N FitsMap
+            JADES FitsMap ↗
           </a>
-        </p>
-        <p>
-          <strong>JADES EAZY SED:</strong>{" "}
           {jadesNumericId ? (
             <a
+              className="btn-link"
               href={`https://jades.idies.jhu.edu/goods-n/goodsn_eazy_seds_v10e1/${jadesNumericId}_EAZY_SED.png`}
               target="_blank"
               rel="noreferrer"
             >
-              Open SED plot
+              EAZY SED ↗
             </a>
-          ) : (
-            <span className="muted">Unavailable</span>
-          )}
-        </p>
-        <div>
-          <strong>Observation modes / Priority:</strong> {target.priority}
-          <div style={{ marginTop: "0.45rem", display: "grid", gap: "0.35rem" }}>
-            {observationModes.length > 0 ? (
-              observationModes.map((mode) => (
-                <div key={`${mode.instrument}-${mode.status}`} style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <span className="tag">{mode.instrument}</span>
-                  <span className="tag">{mode.status}</span>
-                </div>
-              ))
-            ) : (
-              <span className="muted">Not labeled</span>
-            )}
-          </div>
+          ) : null}
         </div>
-        <p>
-          <strong>JWST Program:</strong> {target.jwst_program_id}
-        </p>
-        <p>
-          <strong>Notes:</strong> {target.notes || "None"}
-        </p>
-        <p>
-          <strong>Quick tags:</strong> {quickTags.length > 0 ? quickTags.join(", ") : "None"}
-        </p>
-        <p>
-          <strong>Emission line tags:</strong>{" "}
-          {emissionLineTags.length > 0 ? emissionLineTags.join(", ") : "None in VI table"}
-        </p>
       </section>
 
       <section className="card">
-        <h2>Ancillary Assets</h2>
-        {target.ancillary_assets.length === 0 ? (
-          <p className="muted">No ancillary assets registered for this target.</p>
+        <h2>Data Products</h2>
+        {productGroups.length === 0 ? (
+          <p className="muted">No data products registered for this target.</p>
         ) : (
-          <div className="grid">
-            {target.ancillary_assets.map((asset) => (
-              <article
-                key={`${asset.asset_type}-${asset.storage_key}-${asset.spectrum_profile ?? ""}`}
-                className="card"
-                style={{ padding: "0.75rem 0.9rem" }}
-              >
-                <p>
-                  <span className="tag">{ancillaryTagLabel(asset.asset_type, asset.storage_key)}</span> {asset.label}
-                </p>
-                <p className="muted">Storage key: {asset.storage_key}</p>
-                {asset.preview_url ? (
-                  <div className="grid">
-                    <p style={{ margin: "0.15rem 0" }}>
-                      <a href={withBasePathForApiUrl(asset.preview_url)} target="_blank" rel="noreferrer">
-                        {/\.fits$/i.test(asset.storage_key) ? "Download FITS" : "Preview"}
-                      </a>
-                    </p>
-                    {(asset.asset_type === "image" ||
-                      (asset.asset_type === "spectrum" &&
-                        asset.preview_url &&
-                        isImageAssetPath(asset.preview_url))) ? (
-                      (() => {
-                        const isSpecPlot = isSpecPlotAsset(asset.asset_type, asset.storage_key);
-                        return (
-                          <Image
-                            src={withBasePathForApiUrl(asset.preview_url)}
-                            alt={`${target.emerald_id} ${asset.label}`}
-                            width={isSpecPlot ? 1100 : 320}
-                            height={isSpecPlot ? 700 : 320}
-                            unoptimized
-                            style={{
-                              width: isSpecPlot ? "100%" : "min(320px, 100%)",
-                              maxWidth: isSpecPlot ? "100%" : "320px",
-                              height: "auto",
-                              borderRadius: "8px",
-                              border: "1px solid #d8e0e3"
-                            }}
-                          />
-                        );
-                      })()
-                    ) : null}
-                  </div>
-                ) : null}
-              </article>
-            ))}
-          </div>
+          productGroups.map((group) => (
+            <div key={group.key} className="product-group">
+              <strong>{group.title}</strong>
+              {group.rows.map((row) => (
+                <div key={row.key} className="product-row">
+                  {row.tag ? <span className="tag">{row.tag}</span> : null}
+                  {row.buttons.map((button) => (
+                    <a
+                      key={button.href}
+                      className="btn-link"
+                      href={withBasePathForApiUrl(button.href)}
+                      title={button.storageKey}
+                    >
+                      {button.label}
+                    </a>
+                  ))}
+                  {row.preview ? (
+                    <ProductPreview
+                      src={withBasePathForApiUrl(row.preview.src)}
+                      alt={`${target.emerald_id} ${group.title} ${row.tag}`}
+                      title={row.preview.storageKey}
+                    />
+                  ) : null}
+                </div>
+              ))}
+              {group.thumbnails.length > 0 ? (
+                <div className="product-thumbs">
+                  {group.thumbnails.map((thumbnail) => (
+                    <a
+                      key={thumbnail.storageKey}
+                      href={withBasePathForApiUrl(thumbnail.src)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={thumbnail.storageKey}
+                    >
+                      <Image
+                        src={withBasePathForApiUrl(thumbnail.src)}
+                        alt={`${target.emerald_id} finding chart ${thumbnail.label}`}
+                        width={140}
+                        height={140}
+                        unoptimized
+                      />
+                      <span className="muted">{thumbnail.label}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ))
         )}
+        {bundleNote ? <p className="muted product-note">{bundleNote}</p> : null}
       </section>
 
       {oneDSpectrumAssets.length > 0 ? (
