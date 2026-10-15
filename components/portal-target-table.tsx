@@ -237,7 +237,7 @@ function spectrumPreviewForInstrument(target: TargetRecord, instrument: string):
       return key.includes("diver_grating_plots/");
     }
     if (instrumentLower === "prism") {
-      return key.includes("diver_prism_plots/");
+      return key.includes("diver_prism_plots/") || /_clear_prism_.*_bundle\.png$/i.test(key);
     }
     return false;
   });

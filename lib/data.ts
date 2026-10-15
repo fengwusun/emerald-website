@@ -16,6 +16,12 @@ const EMERALD_GRATING_DIR = "emerald_grating_plots";
 const DIVER_GRATING_DIR = "diver_grating_plots";
 const DIVER_PRISM_PLOT_DIR = "diver_prism_plots";
 const JADES_PHOTOMETRY_DIR = "jades_photometry";
+// SMILES reductions (Y. Zhu) bundled with 3NOD/2NOD/SMBG/DIRTY background branches; newest release per mode.
+const SMILES_BUNDLE_SETS: ReadonlyArray<{ dir: string; release: string }> = [
+  { dir: "EMERALDv0.2a", release: "v0.2a" },
+  { dir: "DIVERv0.2a/G140M", release: "v0.2a" },
+  { dir: "DIVERv0.2/PRISM", release: "v0.2" }
+];
 
 // CSV-listed assets use "targets/"; assets discovered in the media root use their media subdirectory.
 export const ASSET_STORAGE_KEY_PREFIXES: ReadonlyArray<string> = [
@@ -23,7 +29,8 @@ export const ASSET_STORAGE_KEY_PREFIXES: ReadonlyArray<string> = [
   `${EMERALD_GRATING_DIR}/`,
   `${DIVER_GRATING_DIR}/`,
   `${DIVER_PRISM_PLOT_DIR}/`,
-  `${JADES_PHOTOMETRY_DIR}/`
+  `${JADES_PHOTOMETRY_DIR}/`,
+  ...SMILES_BUNDLE_SETS.map((set) => `${set.dir}/`)
 ];
 
 export function hasValidStorageKeyPrefix(storageKey: string): boolean {
@@ -95,6 +102,18 @@ type PhotometryAssetRecord = {
   sourceId: string;
   kind: "CIRC" | "KRON";
   filename: string;
+};
+
+type SmilesBundleAssetRecord = {
+  programId: string;
+  sourceId: string;
+  observationNumber: string;
+  filter: string;
+  grating: string;
+  detector: string;
+  release: string;
+  storageKey: string;
+  kind: "png" | "fits" | "csv";
 };
 
 type ObservationMode = {
@@ -329,6 +348,31 @@ function buildEmeraldGratingAsset(record: EmeraldGratingAssetRecord) {
     label: `EMERALD G395M 2D FITS (o${record.observationNumber}v${record.visitNumber}, ${record.filter}/${record.grating})`,
     storage_key: `${EMERALD_GRATING_DIR}/${record.filename}`,
     preview_url: `/api/targets/file?file=${EMERALD_GRATING_DIR}/${record.filename}`,
+    access_level: "team" as const
+  };
+}
+
+function buildSmilesBundleAsset(record: SmilesBundleAssetRecord) {
+  const program = record.programId === EMERALD_PROGRAM_ID ? "EMERALD" : "DIVER";
+  const mode = `o${record.observationNumber}, ${record.filter}/${record.grating}, ${record.detector}`;
+  if (record.kind === "png") {
+    return {
+      asset_type: "spectrum" as const,
+      label: `${program} ${record.release} Bundle Quicklook (${mode})`,
+      storage_key: record.storageKey,
+      preview_url: `/api/targets/image?file=${record.storageKey}`,
+      access_level: "team" as const
+    };
+  }
+
+  return {
+    asset_type: "other" as const,
+    label:
+      record.kind === "fits"
+        ? `${program} ${record.release} Bundle FITS, 3NOD/2NOD/SMBG/DIRTY where available (${mode})`
+        : `${program} ${record.release} Bundle 1D CSV (${mode})`,
+    storage_key: record.storageKey,
+    preview_url: `/api/targets/file?file=${record.storageKey}`,
     access_level: "team" as const
   };
 }
@@ -598,13 +642,20 @@ function loadEmeraldGratingAssetsById(): Map<string, EmeraldGratingAssetRecord[]
     return new Map();
   }
 
-  const files = fs.readdirSync(emeraldDir);
+  const topLevelFiles = fs.readdirSync(emeraldDir);
+  // Pipeline 2D spectra live in Obs00N/spec/; their storage keys keep the subfolder path.
+  const nestedFiles = topLevelFiles
+    .filter((name) => /^Obs\d{3}$/i.test(name))
+    .flatMap((obsDir) => {
+      const specDir = path.join(emeraldDir, obsDir, "spec");
+      return fs.existsSync(specDir) ? fs.readdirSync(specDir).map((name) => `${obsDir}/spec/${name}`) : [];
+    });
   const byEmeraldId = new Map<string, EmeraldGratingAssetRecord[]>();
   const pattern =
     /^jw07935(\d{3})(\d{3})_([A-Za-z0-9]+)-([A-Za-z0-9]+)_s(\d+)(?:_(s2d|x1d))?\.(pdf|png|fits|json)$/i;
 
-  for (const filename of files) {
-    const match = filename.match(pattern);
+  for (const filename of [...topLevelFiles, ...nestedFiles]) {
+    const match = path.basename(filename).match(pattern);
     if (!match) {
       continue;
     }
@@ -649,6 +700,85 @@ function loadEmeraldGratingAssetsById(): Map<string, EmeraldGratingAssetRecord[]
   }
 
   return byEmeraldId;
+}
+
+function loadSmilesBundles(): {
+  byEmeraldId: Map<string, SmilesBundleAssetRecord[]>;
+  bySourceId: Map<string, SmilesBundleAssetRecord[]>;
+  positionsBySourceId: Map<string, { ra: number; dec: number }>;
+} {
+  const byEmeraldId = new Map<string, SmilesBundleAssetRecord[]>();
+  const bySourceId = new Map<string, SmilesBundleAssetRecord[]>();
+  const positionsBySourceId = new Map<string, { ra: number; dec: number }>();
+  const pattern =
+    /^jw_o(\d+)_(\d+)_(\d+)_([A-Za-z0-9]+)_([A-Za-z0-9]+)_([A-Za-z0-9]+)_bundle(_1d)?\.(png|fits|csv)$/i;
+
+  for (const set of SMILES_BUNDLE_SETS) {
+    const setDir = path.join(localMediaBaseDir(), set.dir);
+    if (!fs.existsSync(setDir)) {
+      continue;
+    }
+
+    for (const filename of fs.readdirSync(setDir)) {
+      if (/^bundle_summary.*\.csv$/i.test(filename)) {
+        const rows = parse(fs.readFileSync(path.join(setDir, filename), "utf8"), {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        }) as Record<string, string>[];
+        for (const row of rows) {
+          const [, programId, sourceId] = (row.id ?? "").split("_");
+          const ra = Number(row.ra);
+          const dec = Number(row.dec);
+          if (programId !== EMERALD_PROGRAM_ID && sourceId && Number.isFinite(ra) && Number.isFinite(dec)) {
+            positionsBySourceId.set(sourceId, { ra, dec });
+          }
+        }
+        continue;
+      }
+
+      const match = filename.match(pattern);
+      if (!match) {
+        continue;
+      }
+      const kind = match[8].toLowerCase() as SmilesBundleAssetRecord["kind"];
+      if ((match[7] !== undefined) !== (kind === "csv")) {
+        continue;
+      }
+      const record: SmilesBundleAssetRecord = {
+        observationNumber: match[1],
+        programId: match[2],
+        sourceId: match[3],
+        filter: match[4].toUpperCase(),
+        grating: match[5].toUpperCase(),
+        detector: match[6].toUpperCase(),
+        release: set.release,
+        storageKey: `${set.dir}/${filename}`,
+        kind
+      };
+      const bucket = record.programId === EMERALD_PROGRAM_ID ? byEmeraldId : bySourceId;
+      const key = record.programId === EMERALD_PROGRAM_ID ? normalizeEmeraldAssetId(record.sourceId) : record.sourceId;
+      const existing = bucket.get(key) ?? [];
+      existing.push(record);
+      bucket.set(key, existing);
+    }
+  }
+
+  // Quicklook first, then FITS, then CSV within each bundle.
+  const kindRank = { png: 0, fits: 1, csv: 2 };
+  const bundleStem = (record: SmilesBundleAssetRecord) => record.storageKey.replace(/_bundle(_1d)?\.\w+$/i, "");
+  for (const bucket of [byEmeraldId, bySourceId]) {
+    for (const [key, records] of bucket.entries()) {
+      bucket.set(
+        key,
+        records.sort(
+          (a, b) => bundleStem(a).localeCompare(bundleStem(b)) || kindRank[a.kind] - kindRank[b.kind]
+        )
+      );
+    }
+  }
+
+  return { byEmeraldId, bySourceId, positionsBySourceId };
 }
 
 function loadViCatalogBySourceId(): Map<string, ViCatalogRecord> {
@@ -752,6 +882,7 @@ export function loadTargets(): TargetRecord[] {
   const prismLineFitJsonAssetsBySourceId = loadPrismLineFitJsonAssetsBySourceId();
   const photometryAssetsBySourceId = loadPhotometryAssetsBySourceId();
   const emeraldGratingAssetsById = loadEmeraldGratingAssetsById();
+  const smilesBundles = loadSmilesBundles();
 
   const records = parse(csvRaw, {
     columns: true,
@@ -783,10 +914,14 @@ export function loadTargets(): TargetRecord[] {
       observation_modes: baseObservationModes
     };
     const emeraldGratingAssets = emeraldGratingRecords.map((record) => buildEmeraldGratingAsset(record));
+    const emeraldBundleAssets = (smilesBundles.byEmeraldId.get(target.emerald_id) ?? []).map((record) =>
+      buildSmilesBundleAsset(record)
+    );
+    const emeraldAssets = [...emeraldGratingAssets, ...emeraldBundleAssets];
     const emeraldObservedTarget =
-      emeraldGratingAssets.length > 0
+      emeraldAssets.length > 0
         ? {
-            ...attachAssets(baseTarget, emeraldGratingAssets),
+            ...attachAssets(baseTarget, emeraldAssets),
             observation_modes: mergeObservationMode(
               baseTarget.observation_modes,
               { instrument: EMERALD_INSTRUMENT, status: "observed" },
@@ -815,15 +950,19 @@ export function loadTargets(): TargetRecord[] {
     const prismFitsAssets = prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord));
     const prismLineFitJsonAssets = prismLineFitRecords.map((record) => buildPrismLineFitJsonAsset(record));
     const photometryAssets = photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord));
+    const diverBundleRecords = smilesBundles.bySourceId.get(sourceId) ?? [];
+    const hasPrismBundle = diverBundleRecords.some((record) => record.grating === "PRISM");
+    const hasGratingBundle = diverBundleRecords.some((record) => record.grating === "G140M");
     let merged = attachAssets(emeraldObservedTarget, [
       ...gratingCsvAssets,
       ...prismAssets,
       ...prismFitsAssets,
       ...prismLineFitJsonAssets,
-      ...photometryAssets
+      ...photometryAssets,
+      ...diverBundleRecords.map((record) => buildSmilesBundleAsset(record))
     ]);
 
-    if (prismAssets.length > 0) {
+    if (prismAssets.length > 0 || hasPrismBundle) {
       merged = {
         ...merged,
         instrument: dedupe([...merged.instruments, DIVER_PRISM_INSTRUMENT]).join(", "),
@@ -836,7 +975,7 @@ export function loadTargets(): TargetRecord[] {
       };
     }
 
-    if (!viRecord && gratingCsvRecords.length === 0) {
+    if (!viRecord && gratingCsvRecords.length === 0 && !hasGratingBundle) {
       return merged;
     }
 
@@ -875,7 +1014,8 @@ export function loadTargets(): TargetRecord[] {
     ...prismAssetsBySourceId.keys(),
     ...prismFitsAssetsBySourceId.keys(),
     ...prismLineFitJsonAssetsBySourceId.keys(),
-    ...photometryAssetsBySourceId.keys()
+    ...photometryAssetsBySourceId.keys(),
+    ...smilesBundles.bySourceId.keys()
   ]);
 
   for (const sourceId of allCatalogSourceIds) {
@@ -889,8 +1029,16 @@ export function loadTargets(): TargetRecord[] {
     const prismFitsRecords = prismFitsAssetsBySourceId.get(sourceId) ?? [];
     const prismLineFitRecords = prismLineFitJsonAssetsBySourceId.get(sourceId) ?? [];
     const photometryRecords = photometryAssetsBySourceId.get(sourceId) ?? [];
-    const hasGrating = viRecord !== undefined || gratingCsvRecords.length > 0;
-    const hasPrism = prismRecords.length > 0 || prismFitsRecords.length > 0;
+    const bundleRecords = smilesBundles.bySourceId.get(sourceId) ?? [];
+    const position = smilesBundles.positionsBySourceId.get(sourceId);
+    const hasGrating =
+      viRecord !== undefined ||
+      gratingCsvRecords.length > 0 ||
+      bundleRecords.some((record) => record.grating === "G140M");
+    const hasPrism =
+      prismRecords.length > 0 ||
+      prismFitsRecords.length > 0 ||
+      bundleRecords.some((record) => record.grating === "PRISM");
     const instruments = dedupe([
       ...(hasGrating ? [DIVER_GRATING_INSTRUMENT] : []),
       ...(hasPrism ? [DIVER_PRISM_INSTRUMENT] : [])
@@ -907,19 +1055,20 @@ export function loadTargets(): TargetRecord[] {
       ...prismRecords.map((prismRecord) => buildPrismSpectrumAsset(prismRecord)),
       ...prismFitsRecords.map((prismFitsRecord) => buildPrismFitsAsset(prismFitsRecord)),
       ...prismLineFitRecords.map((record) => buildPrismLineFitJsonAsset(record)),
-      ...photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord))
+      ...photometryRecords.map((photometryRecord) => buildPhotometryAsset(photometryRecord)),
+      ...bundleRecords.map((record) => buildSmilesBundleAsset(record))
     ];
     const noteParts = [
       viRecord?.notes ?? "",
       hasPrism ? "DIVER PRISM source" : "",
-      "Coordinates pending"
+      position ? "Coordinates from SMILES bundle summary" : "Coordinates pending"
     ].filter((part) => part.length > 0);
 
     targets.push({
       emerald_id: `DIV-${sourceId}`,
       name: `JADES-${sourceId}`,
-      ra: 0,
-      dec: 0,
+      ra: position?.ra ?? 0,
+      dec: position?.dec ?? 0,
       z_spec: viRecord?.redshift ?? 1,
       f200w: 99,
       f444w: 99,
