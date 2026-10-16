@@ -5,7 +5,6 @@ import { withBasePath, withBasePathForApiUrl } from "@/lib/base-path";
 import { getTargetById } from "@/lib/data";
 import { groupTargetProducts } from "@/lib/product-groups";
 import { getEmissionLineTagsForTarget, getQuickTagsForTarget } from "@/lib/target-tags";
-import { ProductPreview } from "@/components/product-preview";
 import { Spectrum1DViewer } from "@/components/spectrum-1d-viewer";
 
 function TagList({ tags, empty }: { tags: string[]; empty: string }) {
@@ -141,11 +140,22 @@ export default async function TargetDetailPage({
                     </a>
                   ))}
                   {row.preview ? (
-                    <ProductPreview
-                      src={withBasePathForApiUrl(row.preview.src)}
-                      alt={`${target.emerald_id} ${group.title} ${row.tag}`}
+                    <a
+                      className="product-preview"
+                      href={withBasePathForApiUrl(row.preview.src)}
+                      target="_blank"
+                      rel="noreferrer"
                       title={row.preview.storageKey}
-                    />
+                    >
+                      <Image
+                        src={withBasePathForApiUrl(row.preview.src)}
+                        alt={`${target.emerald_id} ${group.title} ${row.tag}`}
+                        width={1100}
+                        height={700}
+                        unoptimized
+                        style={{ width: "100%", height: "auto" }}
+                      />
+                    </a>
                   ) : null}
                 </div>
               ))}

@@ -262,8 +262,7 @@ th button {
   gap: 0.35rem;
 }
 
-.btn-link,
-button.btn-small {
+.btn-link {
   display: inline-block;
   border-radius: 8px;
   border: 1px solid #9fd6c5;
@@ -275,8 +274,7 @@ button.btn-small {
   text-decoration: none;
 }
 
-.btn-link:hover,
-button.btn-small:hover {
+.btn-link:hover {
   background: #e1f5ed;
   text-decoration: none;
 }

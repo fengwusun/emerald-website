@@ -24,7 +24,7 @@ test("groupTargetProducts turns assets into compact rows with short buttons", ()
 
   assert.deepEqual(
     groups.map((group) => group.title),
-    ["EMERALD G395M · pipeline reduction", "EMERALD G395M · SMILES v0.2a bundle", "MSA finding charts"]
+    ["EMERALD G395M · S.Cai", "EMERALD G395M · Y.Zhu v0.2a", "MSA finding charts"]
   );
 
   const [pipeline, bundle, charts] = groups;
@@ -49,7 +49,7 @@ test("groupTargetProducts keeps early DIVER grating files out of the SMILES bund
     { asset_type: "spectrum", label: "CSV a", storage_key: csv, spectrum_profile: "flux_a_cgs", preview_url: file(csv), access_level: "team" },
     { asset_type: "spectrum", label: "CSV b", storage_key: csv, spectrum_profile: "flux_b_cgs", preview_url: file(csv), access_level: "team" }
   ]);
-  assert.deepEqual(groups.map((group) => group.title), ["DIVER G140M · early reduction"]);
+  assert.deepEqual(groups.map((group) => group.title), ["DIVER G140M · Y.Zhu pre-v0.2"]);
   assert.equal(groups[0].rows.length, 1);
   assert.equal(groups[0].rows[0].tag, "o001");
   assert.deepEqual(groups[0].rows[0].buttons.map((button) => button.label), ["1D CSV"]);

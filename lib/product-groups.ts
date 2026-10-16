@@ -51,6 +51,7 @@ function classify(asset: Asset): Classified {
     };
   }
 
+  // Group titles name the reducer: S. Cai (EMERALD pipeline) or Y. Zhu (SMILES bundles and earlier DIVER products).
   // SMILES bundle folders carry the release in their name (EMERALDv0.2a/, DIVERv0.2/PRISM/).
   const setDir = key.slice(0, Math.max(0, key.length - filename.length - 1));
   const release = setDir.match(/v\d+\.\d+[a-z]*/i)?.[0];
@@ -61,7 +62,7 @@ function classify(asset: Asset): Classified {
     const extension = bundle[5].toLowerCase();
     return {
       groupKey: `bundle:${setDir}:${grating}`,
-      title: `${program} ${grating} · SMILES ${release} bundle`,
+      title: `${program} ${grating} · Y.Zhu ${release}`,
       note: BUNDLE_NOTE,
       order: grating === "G395M" ? 20 : grating === "G140M" ? 30 : 50,
       rowTag: `o${bundle[1]} · ${bundle[3].toUpperCase()}`,
@@ -74,7 +75,7 @@ function classify(asset: Asset): Classified {
     const obs = filename.match(/^jw07935(\d{3})\d{3}_/i);
     return {
       groupKey: "emerald-pipeline",
-      title: "EMERALD G395M · pipeline reduction",
+      title: "EMERALD G395M · S.Cai",
       order: 10,
       rowTag: obs ? `o${obs[1]}` : "",
       button: lower.endsWith(".pdf")
@@ -92,7 +93,7 @@ function classify(asset: Asset): Classified {
     const obs = filename.match(/^jw_o(\d+)_/i);
     return {
       groupKey: "diver-grating-early",
-      title: "DIVER G140M · early reduction",
+      title: "DIVER G140M · Y.Zhu pre-v0.2",
       order: 40,
       rowTag: obs ? `o${obs[1]}` : "",
       button: lower.endsWith(".csv") ? "1D CSV" : undefined,
@@ -104,7 +105,7 @@ function classify(asset: Asset): Classified {
     const obs = filename.match(/^jw_o(\d+)_/i);
     return {
       groupKey: "diver-prism-early",
-      title: "DIVER PRISM · early reduction",
+      title: "DIVER PRISM · Y.Zhu pre-v0.2",
       order: 60,
       rowTag: obs ? `o${obs[1]}` : "",
       button: lower.endsWith("_x1d.fits")
